@@ -11,10 +11,8 @@ public class AppDbContext : DbContext
 
   protected override void OnModelCreating(ModelBuilder modelBuilder)
   {
-    modelBuilder.Entity<WordSentence>()
-        .HasKey(ws => new { ws.WordId, ws.SentenceId });
+    modelBuilder.Entity<WordSentence>().HasKey(ws => new { ws.WordId, ws.SentenceId });
 
-    modelBuilder.Entity<UserWordProgress>()
-        .HasKey(p => new { p.UserId, p.WordId });
+    modelBuilder.Entity<UserWordProgress>().HasKey(p => new { p.UserId, p.WordId });
   }
 }
