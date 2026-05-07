@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import api from "../Api";
 
 interface QuizQuestion {
   wordId: string;
@@ -26,7 +27,7 @@ const Quiz = () => {
     setSelected(null);
     setResult(null);
     try {
-      const res = await fetch("http://localhost:7000/api/quiz");
+      const res = await api.get("/api/quiz");
       if (!res.ok) throw new Error();
       const data = await res.json();
       setQuestion(data);
@@ -45,10 +46,9 @@ const Quiz = () => {
     setSelected(index);
     const isCorrect = index === question.correctIndex;
     try {
-      const res = await fetch("http://localhost:7000/api/quiz/answer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wordId: question.wordId, isCorrect })
+      const res = await api.post("/api/quiz/answer", {
+        wordId: question.wordId,
+        isCorrect
       });
       const data = await res.json();
       setResult(data);

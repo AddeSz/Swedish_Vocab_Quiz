@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import api from "../Api";
 
 interface ProgressData {
   totalWordsSeen: number;
@@ -12,7 +13,8 @@ const Progress = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:7000/api/progress")
+    api
+      .get("/api/progress")
       .then((r) => r.json())
       .then((d) => {
         setData(d);
