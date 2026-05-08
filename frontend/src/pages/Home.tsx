@@ -2,18 +2,19 @@ import { Link } from "react-router-dom";
 
 const quizModes = [
   {
-    id: "definition",
+    id: "ord-definition",
     title: "Ord → Definition",
     description:
       "Se ett svenskt ord och välj rätt definition bland fyra alternativ.",
     available: true,
-    path: "/quiz"
+    path: "/quiz/ord-definition"
   },
   {
-    id: "reverse",
+    id: "definition-ord",
     title: "Definition → Ord",
     description: "Se en definition och hitta vilket ord den beskriver.",
-    available: false
+    available: true,
+    path: "/quiz/definition-ord"
   },
   {
     id: "blank",

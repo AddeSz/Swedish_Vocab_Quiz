@@ -54,14 +54,81 @@ public class QuizController : ControllerBase
     var word = await _db.Words.FindAsync(answer.WordId);
     if (word is null) return NotFound();
 
-    var progress = await _db.UserWordProgresses.FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == answer.WordId);
+    var progress = await UpdateProgress(answer.WordId, answer.IsCorrect);
+
+    return Ok(new QuizResultDto
+    {
+      IsCorrect = answer.IsCorrect,
+      CorrectDefinition = word.Definition,
+      CorrectWord = word.Text,
+      NextReviewDate = progress.NextReviewDate,
+    });
+  }
+
+
+  [HttpGet("reverse")]
+  public async Task<IActionResult> GetReverseQuestion()
+  {
+    var now = DateTime.UtcNow;
+
+    var word = await _db.Words
+        .Where(w => !_db.UserWordProgresses.Any(p => p.UserId == UserId && p.WordId == w.Id && p.NextReviewDate > now))
+        .OrderBy(_ => EF.Functions.Random())
+        .FirstOrDefaultAsync();
+
+    if (word is null)
+      return NotFound("No words available for review.");
+
+    var distractors = await _db.Words
+        .Where(w => w.Id != word.Id && w.DifficultyLevel == word.DifficultyLevel)
+        .OrderBy(_ => EF.Functions.Random())
+        .Take(3)
+        .Select(w => w.Text)
+        .ToListAsync();
+
+    if (distractors.Count < 3)
+      return Problem("Not enough words in database to generate quiz.");
+
+    var options = distractors.Append(word.Text).OrderBy(_ => Guid.NewGuid()).ToList();
+    var correctIndex = options.IndexOf(word.Text);
+
+    return Ok(new QuizQuestionDto
+    {
+      WordId = word.Id,
+      Word = word.Definition,
+      Options = options,
+      CorrectIndex = correctIndex,
+    });
+  }
+
+  [HttpPost("reverse/answer")]
+  public async Task<IActionResult> SubmitReverseAnswer([FromBody] QuizAnswerDto answer)
+  {
+    var word = await _db.Words.FindAsync(answer.WordId);
+    if (word is null) return NotFound();
+
+    var progress = await UpdateProgress(answer.WordId, answer.IsCorrect);
+
+    return Ok(new QuizResultDto
+    {
+      IsCorrect = answer.IsCorrect,
+      CorrectDefinition = word.Definition,
+      CorrectWord = word.Text,
+      NextReviewDate = progress.NextReviewDate,
+    });
+  }
+
+  private async Task<UserWordProgress> UpdateProgress(Guid wordId, bool isCorrect)
+  {
+    var progress = await _db.UserWordProgresses
+        .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == wordId);
 
     if (progress is null)
     {
       progress = new UserWordProgress
       {
         UserId = UserId,
-        WordId = answer.WordId,
+        WordId = wordId,
         EaseFactor = 2.5f,
         IntervalDays = 1,
         LastSeen = DateTime.UtcNow,
@@ -70,12 +137,11 @@ public class QuizController : ControllerBase
       _db.UserWordProgresses.Add(progress);
     }
 
-    //initial sm-2 algorithm
-    int quality = answer.IsCorrect ? 5 : 1;
+    int quality = isCorrect ? 5 : 1;
     progress.EaseFactor = Math.Max(1.3f,
         progress.EaseFactor + 0.1f - (5 - quality) * (0.08f + (5 - quality) * 0.02f));
 
-    progress.IntervalDays = !answer.IsCorrect
+    progress.IntervalDays = !isCorrect
         ? 1
         : progress.IntervalDays == 1
             ? 6
@@ -84,16 +150,10 @@ public class QuizController : ControllerBase
     progress.LastSeen = DateTime.UtcNow;
     progress.NextReviewDate = DateTime.UtcNow.AddDays(progress.IntervalDays);
 
-    if (answer.IsCorrect) progress.CorrectCount++;
+    if (isCorrect) progress.CorrectCount++;
     else progress.IncorrectCount++;
 
     await _db.SaveChangesAsync();
-
-    return Ok(new QuizResultDto
-    {
-      IsCorrect = answer.IsCorrect,
-      CorrectDefinition = word.Definition,
-      NextReviewDate = progress.NextReviewDate,
-    });
+    return progress;
   }
 }

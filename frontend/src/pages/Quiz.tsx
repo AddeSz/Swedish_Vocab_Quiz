@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../Api";
 
 interface QuizQuestion {
@@ -11,12 +12,34 @@ interface QuizQuestion {
 interface QuizResult {
   isCorrect: boolean;
   correctDefinition: string;
+  correctWord: string;
   nextReviewDate: string;
 }
 
 type Phase = "loading" | "question" | "result" | "error";
 
+const modeConfig = {
+  "ord-definition": {
+    title: "Ord → Definition",
+    prompt: "Vad betyder",
+    endpoint: "/api/quiz",
+    answerEndpoint: "/api/quiz/answer",
+    correctAnswer: (r: QuizResult) => r.correctDefinition
+  },
+  "definition-ord": {
+    title: "Definition → Ord",
+    prompt: "Vilket ord betyder",
+    endpoint: "/api/quiz/reverse",
+    answerEndpoint: "/api/quiz/reverse/answer",
+    correctAnswer: (r: QuizResult) => r.correctWord
+  }
+};
+
 const Quiz = () => {
+  const { mode } = useParams<{ mode: string }>();
+  const navigate = useNavigate();
+  const config = modeConfig[mode as keyof typeof modeConfig];
+
   const [question, setQuestion] = useState<QuizQuestion | null>(null);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -27,7 +50,7 @@ const Quiz = () => {
     setSelected(null);
     setResult(null);
     try {
-      const res = await api.get("/api/quiz");
+      const res = await api.get(config.endpoint);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setQuestion(data);
@@ -38,15 +61,19 @@ const Quiz = () => {
   };
 
   useEffect(() => {
+    if (!config) {
+      navigate("/quiz");
+      return;
+    }
     fetchQuestion();
-  }, []);
+  }, [mode]);
 
   const handleAnswer = async (index: number) => {
     if (phase !== "question" || !question) return;
     setSelected(index);
     const isCorrect = index === question.correctIndex;
     try {
-      const res = await api.post("/api/quiz/answer", {
+      const res = await api.post(config.answerEndpoint, {
         wordId: question.wordId,
         isCorrect
       });
@@ -87,12 +114,20 @@ const Quiz = () => {
     return (
       <main className="flex flex-col items-center gap-4 px-6 py-12">
         <p className="text-(--text)">Något gick fel.</p>
-        <button
-          onClick={fetchQuestion}
-          className="px-4 py-2 text-sm border border-(--border) rounded-lg text-(--text-h) hover:bg-(--accent-bg) transition-colors"
-        >
-          Försök igen
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchQuestion}
+            className="px-4 py-2 text-sm border border-(--border) rounded-lg text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+          >
+            Försök igen
+          </button>
+          <Link
+            to="/quiz"
+            className="px-4 py-2 text-sm border border-(--border) rounded-lg text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
+          >
+            Byt övning
+          </Link>
+        </div>
       </main>
     );
   }
@@ -100,9 +135,21 @@ const Quiz = () => {
   return (
     <main className="flex justify-center px-6 py-12">
       <div className="w-full max-w-xl flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium tracking-widest uppercase text-(--text)">
+            {config.title}
+          </p>
+          <Link
+            to="/quiz"
+            className="text-xs text-(--text) hover:text-(--text-h) transition-colors no-underline"
+          >
+            ← Byt övning
+          </Link>
+        </div>
+
         <div className="flex flex-col gap-1">
           <p className="text-xs font-medium tracking-widest uppercase text-(--text)">
-            Vad betyder
+            {config.prompt}
           </p>
           <h1 className="text-5xl font-medium tracking-tight text-(--text-h) m-0">
             {question!.word}
@@ -133,10 +180,14 @@ const Quiz = () => {
                 : "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400"
             }`}
           >
-            <span>{result.isCorrect ? "Rätt!" : "Fel."}</span>
+            <span>
+              {result.isCorrect
+                ? "Rätt!"
+                : `Fel. Rätt svar: ${config.correctAnswer(result)}`}
+            </span>
             <button
               onClick={fetchQuestion}
-              className="font-medium cursor-pointer bg-transparent border-none text-inherit"
+              className="font-medium cursor-pointer bg-transparent border-none text-inherit shrink-0 ml-4"
             >
               Nästa ord →
             </button>
