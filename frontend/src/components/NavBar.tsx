@@ -13,9 +13,12 @@ const NavBar = () => {
 
   return (
     <header className="sticky top-0 z-10 flex items-center gap-6 px-6 py-4 border-b border-(--border) bg-(--bg)">
-      <span className="text-sm font-semibold tracking-widest uppercase text-(--text-h)">
-        Ordförråd
-      </span>
+      <Link key={"home"} to={"/"}>
+        <span className="text-sm font-semibold tracking-widest uppercase text-(--text-h)">
+          Ordförråd
+        </span>
+      </Link>
+
       <nav className="flex gap-1 flex-1">
         {links.map((l) => (
           <Link

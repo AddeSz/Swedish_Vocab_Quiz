@@ -67,10 +67,10 @@ const Quiz = () => {
       return `${base} border-[var(--border)] text-[var(--text)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-bg)]`;
     }
     if (i === question!.correctIndex) {
-      return `${base} border-green-600 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400`;
+      return `${base} border-green-600 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400`;
     }
     if (i === selected) {
-      return `${base} border-red-500 bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400`;
+      return `${base} border-red-500 bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400`;
     }
     return `${base} border-[var(--border)] text-[var(--text)] opacity-50`;
   };
@@ -129,8 +129,8 @@ const Quiz = () => {
           <div
             className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium ${
               result.isCorrect
-                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400"
-                : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+                ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+                : "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400"
             }`}
           >
             <span>{result.isCorrect ? "Rätt!" : "Fel."}</span>
