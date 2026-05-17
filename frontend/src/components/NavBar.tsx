@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import useTheme from "../hooks/useTheme";
 
 const NavBar = () => {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
+  const { user, loading, login, logout } = useAuth();
 
   const links = [
     { to: "/", label: "Hem" },
@@ -34,17 +36,40 @@ const NavBar = () => {
           </Link>
         ))}
       </nav>
-      <select
-        value={theme}
-        onChange={(e) =>
-          setTheme(e.target.value as "light" | "dark" | "system")
-        }
-        className="text-xs px-2 py-1 rounded-md border border-(--border) bg-(--bg) text-(--text) cursor-pointer"
-      >
-        <option value="system">System</option>
-        <option value="light">Ljust</option>
-        <option value="dark">Mörkt</option>
-      </select>
+
+      <div className="flex items-center gap-3">
+        {!loading &&
+          (user ? (
+            <>
+              <span className="text-sm text-(--text)">{user.displayName}</span>
+              <button
+                onClick={logout}
+                className="text-xs px-3 py-1.5 rounded-md border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+              >
+                Logga ut
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={login}
+              className="text-xs px-3 py-1.5 rounded-md border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+            >
+              Logga in
+            </button>
+          ))}
+
+        <select
+          value={theme}
+          onChange={(e) =>
+            setTheme(e.target.value as "light" | "dark" | "system")
+          }
+          className="text-xs px-2 py-1 rounded-md border border-(--border) bg-(--bg) text-(--text) cursor-pointer"
+        >
+          <option value="system">System</option>
+          <option value="light">Ljust</option>
+          <option value="dark">Mörkt</option>
+        </select>
+      </div>
     </header>
   );
 };

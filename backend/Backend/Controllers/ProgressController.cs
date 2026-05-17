@@ -1,23 +1,28 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProgressController : ControllerBase
 {
   private readonly AppDbContext _db;
-  private static readonly Guid UserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+  private readonly CurrentUserService _currentUserService;
 
-  public ProgressController(AppDbContext db)
+  public ProgressController(AppDbContext db, CurrentUserService currentUserService)
   {
     _db = db;
+    _currentUserService = currentUserService;
   }
 
   [HttpGet]
   public async Task<IActionResult> GetProgress()
   {
+    var user = await _currentUserService.GetRequiredUserAsync();
+
     var progresses = await _db.UserWordProgresses
-        .Where(p => p.UserId == UserId)
+        .Where(p => p.UserId == user.Id)
         .ToListAsync();
 
     return Ok(new ProgressDto
@@ -32,8 +37,10 @@ public class ProgressController : ControllerBase
   [HttpGet("weak-words")]
   public async Task<IActionResult> GetWeakWords()
   {
+    var user = await _currentUserService.GetRequiredUserAsync();
+
     var weakWords = await _db.UserWordProgresses
-        .Where(p => p.UserId == UserId)
+        .Where(p => p.UserId == user.Id)
         .OrderBy(p => p.EaseFactor)
         .Take(20)
         .Join(_db.Words,

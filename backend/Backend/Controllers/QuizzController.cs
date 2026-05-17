@@ -6,25 +6,32 @@ using Microsoft.EntityFrameworkCore;
 public class QuizController : ControllerBase
 {
   private readonly AppDbContext _db;
-  private static readonly Guid UserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+  private readonly CurrentUserService _currentUserService;
 
-  public QuizController(AppDbContext db)
+  public QuizController(AppDbContext db, CurrentUserService currentUserService)
   {
     _db = db;
+    _currentUserService = currentUserService;
   }
 
   [HttpGet]
   public async Task<IActionResult> GetQuestion()
   {
     var now = DateTime.UtcNow;
+    Guid? userId = null;
+
+    if (User.Identity?.IsAuthenticated == true)
+    {
+      var user = await _currentUserService.GetRequiredUserAsync();
+      userId = user.Id;
+    }
 
     var word = await _db.Words
-        .Where(w => !_db.UserWordProgresses.Any(p => p.UserId == UserId && p.WordId == w.Id && p.NextReviewDate > now))
+        .Where(w => userId == null || !_db.UserWordProgresses.Any(p => p.UserId == userId && p.WordId == w.Id && p.NextReviewDate > now))
         .OrderBy(_ => EF.Functions.Random())
         .FirstOrDefaultAsync();
 
-    if (word is null)
-      return NotFound("No words available for review.");
+    if (word is null) return NotFound("No words available for review.");
 
     var distractors = await _db.Words
         .Where(w => w.Id != word.Id && w.DifficultyLevel == word.DifficultyLevel)
@@ -54,30 +61,40 @@ public class QuizController : ControllerBase
     var word = await _db.Words.FindAsync(answer.WordId);
     if (word is null) return NotFound();
 
-    var progress = await UpdateProgress(answer.WordId, answer.IsCorrect);
+    UserWordProgress? progress = null;
+    if (User.Identity?.IsAuthenticated == true)
+    {
+      var user = await _currentUserService.GetRequiredUserAsync();
+      progress = await UpdateProgress(user.Id, answer.WordId, answer.IsCorrect);
+    }
 
     return Ok(new QuizResultDto
     {
       IsCorrect = answer.IsCorrect,
       CorrectDefinition = word.Definition,
       CorrectWord = word.Text,
-      NextReviewDate = progress.NextReviewDate,
+      NextReviewDate = progress?.NextReviewDate ?? DateTime.UtcNow,
     });
   }
-
 
   [HttpGet("reverse")]
   public async Task<IActionResult> GetReverseQuestion()
   {
     var now = DateTime.UtcNow;
+    Guid? userId = null;
+
+    if (User.Identity?.IsAuthenticated == true)
+    {
+      var user = await _currentUserService.GetRequiredUserAsync();
+      userId = user.Id;
+    }
 
     var word = await _db.Words
-        .Where(w => !_db.UserWordProgresses.Any(p => p.UserId == UserId && p.WordId == w.Id && p.NextReviewDate > now))
+        .Where(w => userId == null || !_db.UserWordProgresses.Any(p => p.UserId == userId && p.WordId == w.Id && p.NextReviewDate > now))
         .OrderBy(_ => EF.Functions.Random())
         .FirstOrDefaultAsync();
 
-    if (word is null)
-      return NotFound("No words available for review.");
+    if (word is null) return NotFound("No words available for review.");
 
     var distractors = await _db.Words
         .Where(w => w.Id != word.Id && w.DifficultyLevel == word.DifficultyLevel)
@@ -107,27 +124,32 @@ public class QuizController : ControllerBase
     var word = await _db.Words.FindAsync(answer.WordId);
     if (word is null) return NotFound();
 
-    var progress = await UpdateProgress(answer.WordId, answer.IsCorrect);
+    UserWordProgress? progress = null;
+    if (User.Identity?.IsAuthenticated == true)
+    {
+      var user = await _currentUserService.GetRequiredUserAsync();
+      progress = await UpdateProgress(user.Id, answer.WordId, answer.IsCorrect);
+    }
 
     return Ok(new QuizResultDto
     {
       IsCorrect = answer.IsCorrect,
       CorrectDefinition = word.Definition,
       CorrectWord = word.Text,
-      NextReviewDate = progress.NextReviewDate,
+      NextReviewDate = progress?.NextReviewDate ?? DateTime.UtcNow,
     });
   }
 
-  private async Task<UserWordProgress> UpdateProgress(Guid wordId, bool isCorrect)
+  private async Task<UserWordProgress> UpdateProgress(Guid userId, Guid wordId, bool isCorrect)
   {
     var progress = await _db.UserWordProgresses
-        .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == wordId);
+        .FirstOrDefaultAsync(p => p.UserId == userId && p.WordId == wordId);
 
     if (progress is null)
     {
       progress = new UserWordProgress
       {
-        UserId = UserId,
+        UserId = userId,
         WordId = wordId,
         EaseFactor = 2.5f,
         IntervalDays = 1,

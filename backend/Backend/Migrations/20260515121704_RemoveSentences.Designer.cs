@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260515121704_RemoveSentences")]
+    partial class RemoveSentences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -20,41 +23,6 @@ namespace backend.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("GoogleSubject")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("TimedQuizBestStreak")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TimedQuizTotalRuns")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GoogleSubject")
-                        .IsUnique();
-
-                    b.ToTable("Users");
-                });
 
             modelBuilder.Entity("UserWordProgress", b =>
                 {
@@ -127,12 +95,6 @@ namespace backend.Migrations
 
             modelBuilder.Entity("UserWordProgress", b =>
                 {
-                    b.HasOne("User", null)
-                        .WithMany("UserWordProgresses")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Word", "Word")
                         .WithMany("UserWordProgresses")
                         .HasForeignKey("WordId")
@@ -140,11 +102,6 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Word");
-                });
-
-            modelBuilder.Entity("User", b =>
-                {
-                    b.Navigation("UserWordProgresses");
                 });
 
             modelBuilder.Entity("Word", b =>

@@ -9,7 +9,6 @@ public class Word
   public CefrLevel DifficultyLevel { get; set; }
   public double FrequencyRank { get; set; }
 
-  public ICollection<WordSentence> WordSentences { get; set; } = [];
   public ICollection<UserWordProgress> UserWordProgresses { get; set; } = [];
 }
 
