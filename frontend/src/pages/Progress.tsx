@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../Api";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,7 +11,7 @@ interface ProgressData {
 }
 
 const Progress = () => {
-  const { user, loading: authLoading, login } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +48,12 @@ const Progress = () => {
         <p className="text-(--text) text-sm">
           Logga in för att se dina framsteg.
         </p>
-        <button
-          onClick={login}
-          className="w-fit text-sm px-4 py-2 rounded-md border border-(--border) text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+        <Link
+          to="/login"
+          className="w-fit text-sm px-4 py-2 rounded-md border border-(--border) text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
         >
-          Logga in med Google
-        </button>
+          Logga in
+        </Link>
       </main>
     );
   }

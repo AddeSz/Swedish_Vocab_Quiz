@@ -11,6 +11,13 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       credentials: "include"
+    }),
+  patch: (path: string, body: unknown) =>
+    fetch(`${BASE_URL}${path}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      credentials: "include"
     })
 };
 

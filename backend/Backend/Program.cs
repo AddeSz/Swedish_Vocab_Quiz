@@ -66,6 +66,11 @@ builder.Services
 
       var user = await db.Users.FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject);
 
+      if (user is null && !string.IsNullOrEmpty(email))
+      {
+        user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+      }
+
       if (user is null)
       {
         user = new User
@@ -74,6 +79,7 @@ builder.Services
           GoogleSubject = googleSubject,
           Email = email,
           DisplayName = displayName,
+          IsEmailVerified = true,
           CreatedAt = DateTime.UtcNow
         };
 
@@ -81,8 +87,9 @@ builder.Services
       }
       else
       {
+        user.GoogleSubject = googleSubject;
         user.Email = email;
-        user.DisplayName = displayName;
+        user.IsEmailVerified = true;
       }
 
       await db.SaveChangesAsync();

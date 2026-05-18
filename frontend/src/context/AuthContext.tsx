@@ -9,10 +9,18 @@ interface User {
   timedQuizTotalRuns: number;
 }
 
+interface AuthResult {
+  ok: boolean;
+  error: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  loginWithEmail: (email: string, password: string) => Promise<AuthResult>;
+  loginWithGoogle: () => void;
+  register: (email: string, password: string, displayName: string) => Promise<AuthResult>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -33,16 +41,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .catch(() => setLoading(false));
   }, []);
 
-  const login = () => {
+  const loginWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+    const res = await api.post("/api/auth/login", { email, password });
+    if (res.ok) {
+      const data = await res.json();
+      setUser(data);
+      return { ok: true, error: "" };
+    }
+    const text = await res.text();
+    return { ok: false, error: res.status === 403 ? "E-post ej verifierad." : text || "Felaktiga uppgifter." };
+  };
+
+  const loginWithGoogle = () => {
     window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/login?returnUrl=${window.location.origin}`;
+  };
+
+  const register = async (email: string, password: string, displayName: string): Promise<AuthResult> => {
+    const res = await api.post("/api/auth/register", { email, password, displayName });
+    if (res.ok) return { ok: true, error: "" };
+    const text = await res.text();
+    return { ok: false, error: res.status === 409 ? "E-postadressen är redan registrerad." : text || "Registrering misslyckades." };
   };
 
   const logout = () => {
     api.get("/api/auth/logout").then(() => setUser(null));
   };
 
+  const refreshUser = async () => {
+    const r = await api.get("/api/auth/me");
+    if (r.ok) setUser(await r.json());
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithEmail, loginWithGoogle, register, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

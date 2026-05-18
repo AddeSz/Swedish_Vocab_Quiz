@@ -5,7 +5,7 @@ import useTheme from "../hooks/useTheme";
 const NavBar = () => {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   const links = [
     { to: "/", label: "Hem" },
@@ -41,7 +41,12 @@ const NavBar = () => {
         {!loading &&
           (user ? (
             <>
-              <span className="text-sm text-(--text)">{user.displayName}</span>
+              <Link
+                to="/settings"
+                className="text-sm text-(--text) hover:text-(--text-h) transition-colors no-underline"
+              >
+                {user.displayName}
+              </Link>
               <button
                 onClick={logout}
                 className="text-xs px-3 py-1.5 rounded-md border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors"
@@ -50,12 +55,12 @@ const NavBar = () => {
               </button>
             </>
           ) : (
-            <button
-              onClick={login}
-              className="text-xs px-3 py-1.5 rounded-md border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+            <Link
+              to="/login"
+              className="text-xs px-3 py-1.5 rounded-md border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
             >
               Logga in
-            </button>
+            </Link>
           ))}
 
         <select

@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
   protected override void OnModelCreating(ModelBuilder modelBuilder)
   {
     modelBuilder.Entity<UserWordProgress>().HasKey(p => new { p.UserId, p.WordId });
-    modelBuilder.Entity<User>().HasIndex(u => u.GoogleSubject).IsUnique();
+    modelBuilder.Entity<User>().HasIndex(u => u.GoogleSubject).IsUnique().HasFilter("\"GoogleSubject\" IS NOT NULL");
+    modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
   }
 }
