@@ -18,8 +18,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   loginWithEmail: (email: string, password: string) => Promise<AuthResult>;
-  loginWithGoogle: () => void;
-  register: (email: string, password: string, displayName: string) => Promise<AuthResult>;
+  loginWithGoogle: (returnTo?: string) => void;
+  register: (
+    email: string,
+    password: string,
+    displayName: string
+  ) => Promise<AuthResult>;
   refreshUser: () => Promise<void>;
   logout: () => void;
 }
@@ -41,7 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .catch(() => setLoading(false));
   }, []);
 
-  const loginWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  const loginWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<AuthResult> => {
     const res = await api.post("/api/auth/login", { email, password });
     if (res.ok) {
       const data = await res.json();
@@ -49,18 +56,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { ok: true, error: "" };
     }
     const text = await res.text();
-    return { ok: false, error: res.status === 403 ? "E-post ej verifierad." : text || "Felaktiga uppgifter." };
+    return {
+      ok: false,
+      error:
+        res.status === 403
+          ? "E-post ej verifierad."
+          : text || "Felaktiga uppgifter."
+    };
   };
 
-  const loginWithGoogle = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/login?returnUrl=${window.location.origin}`;
+  const loginWithGoogle = (returnTo?: string) => {
+    const dest = returnTo || "/";
+    window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/login?returnUrl=${window.location.origin}${dest}`;
   };
 
-  const register = async (email: string, password: string, displayName: string): Promise<AuthResult> => {
-    const res = await api.post("/api/auth/register", { email, password, displayName });
+  const register = async (
+    email: string,
+    password: string,
+    displayName: string
+  ): Promise<AuthResult> => {
+    const res = await api.post("/api/auth/register", {
+      email,
+      password,
+      displayName
+    });
     if (res.ok) return { ok: true, error: "" };
     const text = await res.text();
-    return { ok: false, error: res.status === 409 ? "E-postadressen är redan registrerad." : text || "Registrering misslyckades." };
+    return {
+      ok: false,
+      error:
+        res.status === 409
+          ? "E-postadressen är redan registrerad."
+          : text || "Registrering misslyckades."
+    };
   };
 
   const logout = () => {
@@ -73,7 +101,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithEmail, loginWithGoogle, register, refreshUser, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        loginWithEmail,
+        loginWithGoogle,
+        register,
+        refreshUser,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

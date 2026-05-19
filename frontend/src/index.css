@@ -5,16 +5,16 @@
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+  --bg-elevated: #faf9fb;
   --border: #e5e4e7;
   --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-bg: rgba(170, 59, 255, 0.08);
   --accent-border: rgba(170, 59, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.06);
+  font:
+    16px/1.6 "Inter",
+    system-ui,
+    sans-serif;
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -22,34 +22,30 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 :root.dark {
   --text: #9ca3af;
   --text-h: #f3f4f6;
   --bg: #16171d;
+  --bg-elevated: #1e1f27;
   --border: #2e303a;
   --accent: #c084fc;
-  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-bg: rgba(192, 132, 252, 0.12);
   --accent-border: rgba(192, 132, 252, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
 :root.light {
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
+  --bg-elevated: #faf9fb;
   --border: #e5e4e7;
   --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-bg: rgba(170, 59, 255, 0.08);
   --accent-border: rgba(170, 59, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -57,12 +53,12 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
+    --bg-elevated: #1e1f27;
     --border: #2e303a;
     --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-bg: rgba(192, 132, 252, 0.12);
     --accent-border: rgba(192, 132, 252, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 6px 24px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -77,38 +73,44 @@
 
 body {
   margin: 0;
-  padding: 0 auto;
 }
 
 h1,
-h2 {
-  font-family: var(--sans);
+h2,
+h3 {
   font-weight: 500;
   color: var(--text-h);
+  margin: 0;
 }
 
 h1 {
-  font-size: 48px;
-  letter-spacing: -1.5px;
-  margin: 32px 0;
-
-  @media (max-width: 1024px) {
-    font-size: 32px;
-    margin: 20px 0;
-  }
+  font-size: 3rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 1.25rem;
+  letter-spacing: -0.3px;
 }
 
 p {
   margin: 0;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeUp 0.4s ease-out both;
+  contain: layout style;
 }

@@ -1,3 +1,4 @@
+import { ArrowRight, Lock, Mail, User, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -34,16 +35,17 @@ const Register = () => {
 
   if (success) {
     return (
-      <main className="flex justify-center px-6 py-12">
+      <main className="flex justify-center px-6 py-14 animate-in">
         <div className="w-full max-w-sm flex flex-col gap-4">
-          <h1 className="text-4xl font-medium tracking-tight text-(--text-h)">
-            Konto skapat!
-          </h1>
+          <h1>Konto skapat!</h1>
           <p className="text-sm text-(--text)">
             Kolla konsolen för verifieringslänk.
           </p>
-          <Link to="/login" className="text-sm text-(--accent)">
-            Gå till inloggning →
+          <Link
+            to="/login"
+            className="flex items-center gap-1 text-sm text-(--accent) font-medium"
+          >
+            Gå till inloggning <ArrowRight size={14} />
           </Link>
         </div>
       </main>
@@ -51,57 +53,67 @@ const Register = () => {
   }
 
   return (
-    <main className="flex justify-center px-6 py-12">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <h1 className="text-4xl font-medium tracking-tight text-(--text-h)">
-          Registrera
-        </h1>
+    <main className="flex justify-center px-6 py-14 animate-in">
+      <div className="w-full max-w-sm flex flex-col gap-8">
+        <h1>Registrera</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="E-post"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Visningsnamn"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Lösenord (minst 8 tecken)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Bekräfta lösenord"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <Mail size={16} className="text-(--text) shrink-0" />
+            <input
+              type="email"
+              placeholder="E-post"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <User size={16} className="text-(--text) shrink-0" />
+            <input
+              type="text"
+              placeholder="Visningsnamn"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <Lock size={16} className="text-(--text) shrink-0" />
+            <input
+              type="password"
+              placeholder="Lösenord (minst 8 tecken)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <Lock size={16} className="text-(--text) shrink-0" />
+            <input
+              type="password"
+              placeholder="Bekräfta lösenord"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-(--accent) text-white text-sm font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-medium cursor-pointer border-none"
           >
-            Registrera
+            <UserPlus size={16} /> Registrera
           </button>
         </form>
 
         <p className="text-sm text-(--text)">
           Har redan ett konto?{" "}
-          <Link to="/login" className="text-(--accent)">
+          <Link to="/login" className="text-(--accent) font-medium">
             Logga in
           </Link>
         </p>

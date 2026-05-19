@@ -1,3 +1,11 @@
+import {
+  CalendarClock,
+  CheckCircle2,
+  Eye,
+  LogIn,
+  Target,
+  XCircle
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../Api";
@@ -21,7 +29,6 @@ const Progress = () => {
       setLoading(false);
       return;
     }
-
     api
       .get("/api/progress")
       .then((r) => r.json())
@@ -33,7 +40,7 @@ const Progress = () => {
 
   if (authLoading || loading) {
     return (
-      <main className="px-6 py-12">
+      <main className="px-6 py-14">
         <p className="text-(--text)">Laddar...</p>
       </main>
     );
@@ -41,18 +48,17 @@ const Progress = () => {
 
   if (!user) {
     return (
-      <main className="px-6 py-12 flex flex-col gap-4">
-        <h1 className="text-4xl font-medium tracking-tight text-(--text-h)">
-          Dina framsteg
-        </h1>
+      <main className="px-6 py-14 flex flex-col gap-4 animate-in">
+        <h1>Dina framsteg</h1>
         <p className="text-(--text) text-sm">
           Logga in för att se dina framsteg.
         </p>
         <Link
           to="/login"
-          className="w-fit text-sm px-4 py-2 rounded-md border border-(--border) text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
+          state={{ from: "/progress" }}
+          className="flex items-center gap-1.5 w-fit text-sm px-4 py-2 rounded-xl border border-(--border) text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
         >
-          Logga in
+          <LogIn size={14} /> Logga in
         </Link>
       </main>
     );
@@ -60,7 +66,7 @@ const Progress = () => {
 
   if (!data) {
     return (
-      <main className="px-6 py-12">
+      <main className="px-6 py-14">
         <p className="text-(--text)">Något gick fel.</p>
       </main>
     );
@@ -74,35 +80,38 @@ const Progress = () => {
         );
 
   const stats = [
-    { value: data.totalWordsSeen, label: "Ord sedda" },
-    { value: data.totalCorrect, label: "Rätta svar" },
-    { value: data.totalIncorrect, label: "Felaktiga svar" },
-    { value: `${accuracy}%`, label: "Träffsäkerhet" }
+    { value: data.totalWordsSeen, label: "Ord sedda", icon: Eye },
+    { value: data.totalCorrect, label: "Rätta svar", icon: CheckCircle2 },
+    { value: data.totalIncorrect, label: "Felaktiga svar", icon: XCircle },
+    { value: `${accuracy}%`, label: "Träffsäkerhet", icon: Target }
   ];
 
   return (
-    <main className="px-6 py-12">
-      <h1 className="text-4xl font-medium tracking-tight text-(--text-h) mb-8">
-        Dina framsteg
-      </h1>
+    <main className="px-6 py-14 animate-in">
+      <h1 className="mb-10">Dina framsteg</h1>
 
       <div className="grid grid-cols-2 gap-3 max-w-xl">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="flex flex-col gap-1.5 p-6 border border-(--border) rounded-xl"
-          >
-            <span className="text-4xl font-medium tracking-tight text-(--text-h)">
-              {s.value}
-            </span>
-            <span className="text-xs tracking-wide text-(--text)">
-              {s.label}
-            </span>
-          </div>
-        ))}
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.label}
+              className="flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)"
+            >
+              <Icon size={18} className="text-(--accent)" />
+              <span className="text-3xl font-medium tracking-tight text-(--text-h)">
+                {s.value}
+              </span>
+              <span className="text-xs tracking-wide text-(--text)">
+                {s.label}
+              </span>
+            </div>
+          );
+        })}
 
-        <div className="col-span-2 flex flex-col gap-1.5 p-6 border border-(--border) rounded-xl">
-          <span className="text-4xl font-medium tracking-tight text-(--text-h)">
+        <div className="col-span-2 flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)">
+          <CalendarClock size={18} className="text-(--accent)" />
+          <span className="text-3xl font-medium tracking-tight text-(--text-h)">
             {data.wordsDueForReview}
           </span>
           <span className="text-xs tracking-wide text-(--text)">

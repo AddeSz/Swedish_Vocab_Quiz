@@ -4,7 +4,36 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Swedish Vocab</title>
+    <style>
+      :root {
+        background: #fff;
+        color: #6b6375;
+      }
+      :root.dark {
+        background: #16171d;
+        color: #9ca3af;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not(.light) {
+          background: #16171d;
+          color: #9ca3af;
+        }
+      }
+    </style>
+    <script>
+      (function () {
+        var t = localStorage.getItem("theme") || "system";
+        var d =
+          t === "dark" ||
+          (t === "system" && matchMedia("(prefers-color-scheme:dark)").matches);
+        var r = document.documentElement;
+        r.classList.toggle("dark", d);
+        r.classList.toggle("light", t === "light");
+      })();
+    </script>
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <title>Ordförråd</title>
   </head>
   <body>
     <div id="root"></div>

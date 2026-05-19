@@ -1,3 +1,11 @@
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  XCircle
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../Api";
@@ -89,43 +97,44 @@ const Quiz = () => {
 
   const getOptionClass = (i: number) => {
     const base =
-      "flex items-start gap-3 p-4 border rounded-xl text-left transition-all text-sm leading-relaxed cursor-pointer disabled:cursor-default";
+      "flex items-start gap-3 p-4 border rounded-2xl text-left transition-all text-sm leading-relaxed cursor-pointer disabled:cursor-default";
     if (phase !== "result") {
-      return `${base} border-[var(--border)] text-[var(--text)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-bg)]`;
+      return `${base} border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-bg)]`;
     }
     if (i === question!.correctIndex) {
-      return `${base} border-green-600 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400`;
+      return `${base} border-green-600 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400`;
     }
     if (i === selected) {
-      return `${base} border-red-500 bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400`;
+      return `${base} border-red-500 bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400`;
     }
-    return `${base} border-[var(--border)] text-[var(--text)] opacity-50`;
+    return `${base} border-[var(--border)] text-[var(--text)] opacity-40`;
   };
 
   if (phase === "loading") {
     return (
-      <main className="flex justify-center px-6 py-12">
-        <p className="text-(--text)">Laddar ord...</p>
+      <main className="flex justify-center items-center px-6 py-20">
+        <Loader2 size={24} className="animate-spin text-(--accent)" />
       </main>
     );
   }
 
   if (phase === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 px-6 py-12">
+      <main className="flex flex-col items-center gap-4 px-6 py-14 animate-in">
+        <XCircle size={32} className="text-(--text)" />
         <p className="text-(--text)">Något gick fel.</p>
         <div className="flex gap-3">
           <button
             onClick={fetchQuestion}
-            className="px-4 py-2 text-sm border border-(--border) rounded-lg text-(--text-h) hover:bg-(--accent-bg) transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm border border-(--border) rounded-xl text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
           >
-            Försök igen
+            <RefreshCw size={14} /> Försök igen
           </button>
           <Link
             to="/quiz"
-            className="px-4 py-2 text-sm border border-(--border) rounded-lg text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm border border-(--border) rounded-xl text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
           >
-            Byt övning
+            <ArrowLeft size={14} /> Byt övning
           </Link>
         </div>
       </main>
@@ -133,17 +142,17 @@ const Quiz = () => {
   }
 
   return (
-    <main className="flex justify-center px-6 py-12">
-      <div className="w-full max-w-xl flex flex-col gap-6">
+    <main className="flex justify-center px-6 py-14 animate-in">
+      <div className="w-full max-w-xl flex flex-col gap-8">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium tracking-widest uppercase text-(--text)">
             {config.title}
           </p>
           <Link
             to="/quiz"
-            className="text-xs text-(--text) hover:text-(--text-h) transition-colors no-underline"
+            className="flex items-center gap-1 text-xs text-(--text) hover:text-(--text-h) transition-colors no-underline"
           >
-            ← Byt övning
+            <ArrowLeft size={12} /> Byt övning
           </Link>
         </div>
 
@@ -151,12 +160,10 @@ const Quiz = () => {
           <p className="text-xs font-medium tracking-widest uppercase text-(--text)">
             {config.prompt}
           </p>
-          <h1 className="text-5xl font-medium tracking-tight text-(--text-h) m-0">
-            {question!.word}
-          </h1>
+          <h1>{question!.word}</h1>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-3">
           {question!.options.map((option, i) => (
             <button
               key={i}
@@ -174,22 +181,27 @@ const Quiz = () => {
 
         {phase === "result" && result && (
           <div
-            className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium ${
+            className={`flex items-center justify-between px-5 py-4 rounded-2xl text-sm font-medium ${
               result.isCorrect
-                ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
-                : "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400"
+                ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400"
+                : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
             }`}
           >
-            <span>
+            <span className="flex items-center gap-2">
+              {result.isCorrect ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <XCircle size={16} />
+              )}
               {result.isCorrect
                 ? "Rätt!"
                 : `Fel. Rätt svar: ${config.correctAnswer(result)}`}
             </span>
             <button
               onClick={fetchQuestion}
-              className="font-medium cursor-pointer bg-transparent border-none text-inherit shrink-0 ml-4"
+              className="flex items-center gap-1 font-medium cursor-pointer bg-transparent border-none text-inherit shrink-0 ml-4"
             >
-              Nästa ord →
+              Nästa <ArrowRight size={14} />
             </button>
           </div>
         )}

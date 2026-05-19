@@ -1,10 +1,13 @@
+import { Lock, LogIn, Mail } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const { loginWithEmail, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from || "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,42 +17,46 @@ const Login = () => {
     setError("");
     const result = await loginWithEmail(email, password);
     if (result.ok) {
-      navigate("/");
+      navigate(from);
     } else {
       setError(result.error);
     }
   };
 
   return (
-    <main className="flex justify-center px-6 py-12">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <h1 className="text-4xl font-medium tracking-tight text-(--text-h)">
-          Logga in
-        </h1>
+    <main className="flex justify-center px-6 py-14 animate-in">
+      <div className="w-full max-w-sm flex flex-col gap-8">
+        <h1>Logga in</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="E-post"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Lösenord"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-(--border) bg-(--bg) text-(--text) text-sm"
-            required
-          />
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <Mail size={16} className="text-(--text) shrink-0" />
+            <input
+              type="email"
+              placeholder="E-post"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-(--border) bg-(--bg-elevated) focus-within:border-(--accent-border) transition-colors">
+            <Lock size={16} className="text-(--text) shrink-0" />
+            <input
+              type="password"
+              placeholder="Lösenord"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h) placeholder:text-(--text)"
+              required
+            />
+          </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-(--accent) text-white text-sm font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-medium cursor-pointer border-none"
           >
-            Logga in
+            <LogIn size={16} /> Logga in
           </button>
         </form>
 
@@ -60,15 +67,15 @@ const Login = () => {
         </div>
 
         <button
-          onClick={loginWithGoogle}
-          className="px-4 py-2 rounded-lg border border-(--border) text-(--text-h) text-sm font-medium hover:bg-(--accent-bg) transition-colors"
+          onClick={() => loginWithGoogle(from)}
+          className="px-4 py-2.5 rounded-xl border border-(--border) text-(--text-h) text-sm font-medium hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
         >
           Logga in med Google
         </button>
 
         <p className="text-sm text-(--text)">
           Inget konto?{" "}
-          <Link to="/register" className="text-(--accent)">
+          <Link to="/register" className="text-(--accent) font-medium">
             Registrera dig
           </Link>
         </p>
