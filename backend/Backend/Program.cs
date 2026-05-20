@@ -7,6 +7,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 var allowedOrigin = builder.Configuration["ALLOWED_ORIGIN"] ?? "http://localhost:5173";
 
+// PORT env var used for cloud deployment (e.g. Railway, Render); defaults to 8080
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -31,6 +32,7 @@ builder.Services
   {
     options.Cookie.HttpOnly = true;
 
+    // SameSite=None + Secure required because frontend and backend are on different origins
     options.Cookie.SameSite = SameSiteMode.None;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
@@ -64,6 +66,8 @@ builder.Services
 
       var displayName = principal?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "";
 
+      // Account linking: first try GoogleSubject, then fall back to email match.
+      // This allows a user who registered with email/password to later sign in with Google.
       var user = await db.Users.FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject);
 
       if (user is null && !string.IsNullOrEmpty(email))
@@ -87,6 +91,7 @@ builder.Services
       }
       else
       {
+        // Link Google identity to existing account and mark email as verified
         user.GoogleSubject = googleSubject;
         user.Email = email;
         user.IsEmailVerified = true;
@@ -94,6 +99,8 @@ builder.Services
 
       await db.SaveChangesAsync();
 
+      // Replace Google's NameIdentifier (Google subject) with our internal User.Id
+      // so CurrentUserService can resolve the user uniformly across auth methods
       var identity = (System.Security.Claims.ClaimsIdentity)principal!.Identity!;
 
       var existingClaim = identity.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);

@@ -34,6 +34,7 @@ public class AuthController : ControllerBase
     var exists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
     if (exists) return Conflict("Email already taken.");
 
+    // Verification token logged to console in dev; in production this would be emailed
     var token = Guid.NewGuid().ToString();
 
     var user = new User
@@ -76,6 +77,7 @@ public class AuthController : ControllerBase
   {
     var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
+    // Null PasswordHash means this is a Google-only account; reject password login
     if (user is null || user.PasswordHash is null)
       return Unauthorized("Invalid credentials.");
 
@@ -85,6 +87,7 @@ public class AuthController : ControllerBase
     if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
       return Unauthorized("Invalid credentials.");
 
+    // Store internal user ID (not Google subject) as the claim for consistent identity across auth methods
     var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, user.Id.ToString()) };
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     var principal = new ClaimsPrincipal(identity);
@@ -99,6 +102,7 @@ public class AuthController : ControllerBase
   {
     var redirectUrl = _allowedOrigin;
 
+    // Only allow redirects to the same host as the configured origin to prevent open redirect
     if (!string.IsNullOrEmpty(returnUrl)
         && Uri.TryCreate(returnUrl, UriKind.Absolute, out var uri)
         && Uri.TryCreate(_allowedOrigin, UriKind.Absolute, out var allowedUri)

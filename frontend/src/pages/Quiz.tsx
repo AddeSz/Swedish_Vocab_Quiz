@@ -30,15 +30,13 @@ const modeConfig = {
   "ord-definition": {
     title: "Ord → Definition",
     prompt: "Vad betyder",
-    endpoint: "/api/quiz",
-    answerEndpoint: "/api/quiz/answer",
+    endpoint: "/api/quiz?mode=wordtodefinition",
     correctAnswer: (r: QuizResult) => r.correctDefinition
   },
   "definition-ord": {
     title: "Definition → Ord",
     prompt: "Vilket ord betyder",
-    endpoint: "/api/quiz/reverse",
-    answerEndpoint: "/api/quiz/reverse/answer",
+    endpoint: "/api/quiz?mode=definitiontoword",
     correctAnswer: (r: QuizResult) => r.correctWord
   }
 };
@@ -81,7 +79,7 @@ const Quiz = () => {
     setSelected(index);
     const isCorrect = index === question.correctIndex;
     try {
-      const res = await api.post(config.answerEndpoint, {
+      const res = await api.post("/api/quiz/answer", {
         wordId: question.wordId,
         isCorrect
       });

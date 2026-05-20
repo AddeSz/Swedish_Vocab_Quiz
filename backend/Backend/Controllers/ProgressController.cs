@@ -34,6 +34,7 @@ public class ProgressController : ControllerBase
     });
   }
 
+  // Returns the 20 words with the lowest ease factor — these are the hardest for this user
   [HttpGet("weak-words")]
   public async Task<IActionResult> GetWeakWords()
   {

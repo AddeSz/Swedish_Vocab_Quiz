@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 
+// Resolves the authenticated user from the cookie's NameIdentifier claim.
+// Both Google OAuth and email/password login store the internal User.Id as this claim,
+// so this service works uniformly regardless of auth method.
 public class CurrentUserService
 {
   private readonly IHttpContextAccessor _httpContextAccessor;
