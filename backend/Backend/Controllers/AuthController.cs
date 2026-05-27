@@ -26,7 +26,13 @@ public class AuthController : ControllerBase
     var user = await _currentUserService.GetRequiredUserAsync();
 
     if (!string.IsNullOrWhiteSpace(dto.DisplayName))
+    {
+      if (dto.DisplayName.Length < 3)
+        return BadRequest(new { error = "Visningsnamn måste vara minst 3 tecken." });
+      if (dto.DisplayName.Length > 20)
+        return BadRequest(new { error = "Visningsnamn får vara max 20 tecken." });
       user.DisplayName = dto.DisplayName;
+    }
 
     var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
     await db.SaveChangesAsync();

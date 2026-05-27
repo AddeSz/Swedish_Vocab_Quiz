@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  login: (screenHint?: string) => void;
   logout: () => void;
   getToken: () => Promise<string>;
   refreshUser: () => Promise<void>;
@@ -57,7 +57,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isAuthenticated, isLoading]);
 
-  const login = () => loginWithRedirect();
+  const login = (screenHint?: string) =>
+    loginWithRedirect({
+      authorizationParams: { screen_hint: screenHint }
+    });
 
   const logout = () => {
     setUser(null);

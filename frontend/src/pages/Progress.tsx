@@ -4,10 +4,10 @@ import {
   Eye,
   LogIn,
   Target,
+  UserPlus,
   XCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import api from "../Api";
 import { useAuth } from "../context/AuthContext";
 
@@ -19,7 +19,7 @@ interface ProgressData {
 }
 
 const Progress = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,13 +53,20 @@ const Progress = () => {
         <p className="text-(--text) text-sm">
           Logga in för att se dina framsteg.
         </p>
-        <Link
-          to="/login"
-          state={{ from: "/progress" }}
-          className="flex items-center gap-1.5 w-fit text-sm px-4 py-2 rounded-xl border border-(--border) text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
-        >
-          <LogIn size={14} /> Logga in
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => login()}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent border-none cursor-pointer"
+          >
+            <LogIn size={14} /> Logga in
+          </button>
+          <button
+            onClick={() => login("signup")}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent cursor-pointer"
+          >
+            <UserPlus size={14} /> Registrera
+          </button>
+        </div>
       </main>
     );
   }
