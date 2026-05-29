@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import NavBar from "./components/NavBar";
+import ThemeToggle from "./components/ThemeToggle";
 import { AuthProvider } from "./context/AuthContext";
 import AutoLogin from "./pages/AutoLogin";
 import Home from "./pages/Home";
@@ -25,6 +26,7 @@ const App = () => {
           <Route path="/auto-login" element={<AutoLogin />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
         </Routes>
+        <ThemeToggle />
       </AuthProvider>
     </BrowserRouter>
   );

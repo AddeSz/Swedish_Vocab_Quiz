@@ -2,21 +2,14 @@ import {
   BarChart3,
   BookOpen,
   ChevronDown,
-  LogIn,
   LogOut,
-  Monitor,
-  Moon,
-  Settings,
-  Sun,
-  UserPlus
+  Settings
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import useTheme from "../hooks/useTheme";
 
 const NavBar = () => {
-  const { theme, setTheme } = useTheme();
   const location = useLocation();
   const { user, loading, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -40,12 +33,6 @@ const NavBar = () => {
     { to: "/progress", label: "Framsteg", icon: BarChart3 }
   ];
 
-  const themeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
-  const themeLabel =
-    theme === "dark" ? "Mörkt" : theme === "light" ? "Ljust" : "System";
-  const nextTheme =
-    theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-
   const initials =
     user?.displayName
       ?.split(" ")
@@ -58,7 +45,7 @@ const NavBar = () => {
     <header className="sticky top-0 z-10 flex items-center gap-6 px-6 h-14 border-b border-(--border) bg-(--bg)/80 backdrop-blur-md">
       <Link to="/" className="flex items-center gap-2 no-underline">
         <span className="text-base font-semibold tracking-widest uppercase text-(--text-h)">
-          Ordförråd
+          Ordivo
         </span>
       </Link>
 
@@ -105,18 +92,6 @@ const NavBar = () => {
 
           {open && (
             <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-(--border) bg-(--bg-elevated) shadow-(--shadow) py-1.5 animate-in">
-              <button
-                onClick={() => {
-                  setTheme(nextTheme);
-                }}
-                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent border-none text-left"
-              >
-                {(() => {
-                  const Icon = themeIcon;
-                  return <Icon size={15} />;
-                })()}
-                <span>Tema: {themeLabel}</span>
-              </button>
               <Link
                 to="/settings"
                 onClick={() => setOpen(false)}
@@ -146,13 +121,13 @@ const NavBar = () => {
               onClick={() => login()}
               className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent border-none cursor-pointer"
             >
-              <LogIn size={14} /> Logga in
+              Logga in
             </button>
             <button
               onClick={() => login("signup")}
               className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent cursor-pointer"
             >
-              <UserPlus size={14} /> Registrera
+              Registrera
             </button>
           </div>
         )

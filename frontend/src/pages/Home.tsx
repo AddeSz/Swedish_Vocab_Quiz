@@ -36,7 +36,7 @@ const Home = () => {
           <Sparkles size={14} />
           Svenska · B1–C2
         </div>
-        <h1>Ordförråd</h1>
+        <h1>Ordivo</h1>
         <p className="text-base leading-relaxed text-(--text) max-w-lg">
           Fördjupa ditt svenska ordförråd med definitionsbaserade quiz anpassade
           för avancerade inlärare och flytande talare.

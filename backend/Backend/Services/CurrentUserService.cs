@@ -5,11 +5,13 @@ public class CurrentUserService
 {
   private readonly IHttpContextAccessor _httpContextAccessor;
   private readonly AppDbContext _db;
+  private readonly string _audience;
 
-  public CurrentUserService(IHttpContextAccessor httpContextAccessor, AppDbContext db)
+  public CurrentUserService(IHttpContextAccessor httpContextAccessor, AppDbContext db, IConfiguration config)
   {
     _httpContextAccessor = httpContextAccessor;
     _db = db;
+    _audience = config["Auth0:Audience"] ?? "";
   }
 
   public async Task<User> GetRequiredUserAsync()
@@ -24,10 +26,10 @@ public class CurrentUserService
 
     if (user is null)
     {
-      var email = principal!.FindFirst("https://ordforrad-api/email")?.Value
+      var email = principal!.FindFirst($"{_audience}/email")?.Value
                   ?? principal!.FindFirst(ClaimTypes.Email)?.Value
                   ?? "";
-      var name = principal!.FindFirst("https://ordforrad-api/name")?.Value
+      var name = principal!.FindFirst($"{_audience}/name")?.Value
                  ?? principal!.FindFirst(ClaimTypes.Name)?.Value
                  ?? email;
 

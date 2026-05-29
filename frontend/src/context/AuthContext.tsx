@@ -19,6 +19,17 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
+const CACHE_KEY = "user_profile";
+
+const getCachedUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -29,8 +40,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logout: auth0Logout,
     getAccessTokenSilently
   } = useAuth0();
-  const [user, setUser] = useState<User | null>(null);
-  const [profileResolved, setProfileResolved] = useState(false);
+
+  const cached = getCachedUser();
+  const [user, setUser] = useState<User | null>(cached);
+  const [profileResolved, setProfileResolved] = useState(!!cached);
 
   const getToken = () => getAccessTokenSilently();
 
@@ -41,7 +54,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUser = async () => {
     try {
       const res = await api.get("/api/auth/me");
-      if (res.ok) setUser(await res.json());
+      if (res.ok) {
+        const profile: User = await res.json();
+        setUser(profile);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(profile));
+      }
     } catch {
     } finally {
       setProfileResolved(true);
@@ -53,6 +70,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated) {
       fetchUser();
     } else {
+      setUser(null);
+      localStorage.removeItem(CACHE_KEY);
       setProfileResolved(true);
     }
   }, [isAuthenticated, isLoading]);
@@ -64,6 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem(CACHE_KEY);
     auth0Logout({ logoutParams: { returnTo: window.location.origin } });
   };
 
@@ -71,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading: isLoading || !profileResolved,
+        loading: !user && (isLoading || !profileResolved),
         login,
         logout,
         getToken,
