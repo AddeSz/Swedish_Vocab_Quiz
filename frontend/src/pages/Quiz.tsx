@@ -6,7 +6,7 @@ import {
   RefreshCw,
   XCircle
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../Api";
 
@@ -50,18 +50,31 @@ const Quiz = () => {
   const [result, setResult] = useState<QuizResult | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
+  const prefetchedRef = useRef<Promise<QuizQuestion> | null>(null);
+
+  const fetchFromApi = async (): Promise<QuizQuestion> => {
+    const res = await api.get(config.endpoint);
+    if (!res.ok) throw new Error();
+    return res.json();
+  };
+
+  const prefetchNext = () => {
+    prefetchedRef.current = fetchFromApi();
+  };
 
   const fetchQuestion = async () => {
     setPhase("loading");
     setSelected(null);
     setResult(null);
     try {
-      const res = await api.get(config.endpoint);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = prefetchedRef.current
+        ? await prefetchedRef.current
+        : await fetchFromApi();
+      prefetchedRef.current = null;
       setQuestion(data);
       setPhase("question");
     } catch {
+      prefetchedRef.current = null;
       setPhase("error");
     }
   };
@@ -86,6 +99,7 @@ const Quiz = () => {
       const data = await res.json();
       setResult(data);
       setPhase("result");
+      prefetchNext();
     } catch {
       setPhase("error");
     }
