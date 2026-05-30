@@ -3,21 +3,15 @@ import {
   BookOpen,
   ChevronDown,
   LogOut,
-  Monitor,
-  Moon,
-  Settings,
-  Sun,
-  User
+  Settings
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import useTheme from "../hooks/useTheme";
 
 const NavBar = () => {
-  const { theme, setTheme } = useTheme();
   const location = useLocation();
-  const { user, loading, logout } = useAuth();
+  const { user, loading, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -39,12 +33,6 @@ const NavBar = () => {
     { to: "/progress", label: "Framsteg", icon: BarChart3 }
   ];
 
-  const themeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
-  const themeLabel =
-    theme === "dark" ? "Mörkt" : theme === "light" ? "Ljust" : "System";
-  const nextTheme =
-    theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-
   const initials =
     user?.displayName
       ?.split(" ")
@@ -54,10 +42,10 @@ const NavBar = () => {
       .toUpperCase() ?? "";
 
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-6 px-6 py-3 border-b border-(--border) bg-(--bg)/80 backdrop-blur-md">
+    <header className="sticky top-0 z-10 flex items-center gap-6 px-6 h-14 border-b border-(--border) bg-(--bg)/80 backdrop-blur-md">
       <Link to="/" className="flex items-center gap-2 no-underline">
-        <span className="text-sm font-semibold tracking-widest uppercase text-(--text-h)">
-          Ordförråd
+        <span className="text-base font-semibold tracking-widest uppercase text-(--text-h)">
+          Ordivo
         </span>
       </Link>
 
@@ -82,76 +70,67 @@ const NavBar = () => {
         })}
       </nav>
 
-      {!loading && (
+      {loading ? (
+        <div className="w-24 h-4 rounded bg-(--border) animate-pulse" />
+      ) : user ? (
         <div className="relative" ref={dropdownRef}>
-          {user ? (
-            <>
-              <button
-                onClick={() => setOpen(!open)}
-                className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent border-none"
-              >
-                <div className="w-8 h-8 rounded-full bg-(--accent) flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                  {initials}
-                </div>
-                <div className="flex flex-col items-start leading-tight">
-                  <span className="text-sm font-medium text-(--text-h)">
-                    {user.displayName}
-                  </span>
-                  <span className="text-xs text-(--text)">{user.email}</span>
-                </div>
-                <ChevronDown
-                  size={14}
-                  className={`text-(--text) transition-transform ${open ? "rotate-180" : ""}`}
-                />
-              </button>
+          <button
+            onClick={() => setOpen(!open)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent border-none"
+          >
+            <div className="w-8 h-8 rounded-full bg-(--accent) flex items-center justify-center text-white text-xs font-semibold shrink-0">
+              {initials}
+            </div>
+            <span className="text-sm font-medium text-(--text-h) max-w-30 truncate">
+              {user.displayName}
+            </span>
+            <ChevronDown
+              size={14}
+              className={`text-(--text) transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </button>
 
-              {open && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-(--border) bg-(--bg-elevated) shadow-(--shadow) py-1.5 animate-in">
-                  <button
-                    onClick={() => {
-                      setTheme(nextTheme);
-                    }}
-                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent border-none text-left"
-                  >
-                    {(() => {
-                      const Icon = themeIcon;
-                      return <Icon size={15} />;
-                    })()}
-                    <span>Tema: {themeLabel}</span>
-                  </button>
-                  <Link
-                    to="/settings"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
-                  >
-                    <Settings size={15} />
-                    <span>Inställningar</span>
-                  </Link>
-                  <div className="my-1.5 border-t border-(--border)" />
-                  <button
-                    onClick={() => {
-                      logout();
-                      setOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-red-500 hover:bg-red-500/8 transition-colors cursor-pointer bg-transparent border-none text-left"
-                  >
-                    <LogOut size={15} />
-                    <span>Logga ut</span>
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <Link
-              to="/login"
-              state={{ from: location.pathname }}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
-            >
-              <User size={12} />
-              Logga in
-            </Link>
+          {open && (
+            <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-(--border) bg-(--bg-elevated) shadow-(--shadow) py-1.5 animate-in">
+              <Link
+                to="/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors no-underline"
+              >
+                <Settings size={15} />
+                <span>Inställningar</span>
+              </Link>
+              <div className="my-1.5 border-t border-(--border)" />
+              <button
+                onClick={() => {
+                  logout();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-(--text) hover:text-red-500 hover:bg-red-500/8 transition-colors cursor-pointer bg-transparent border-none text-left"
+              >
+                <LogOut size={15} />
+                <span>Logga ut</span>
+              </button>
+            </div>
           )}
         </div>
+      ) : (
+        !loading && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => login()}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent border-none cursor-pointer"
+            >
+              Logga in
+            </button>
+            <button
+              onClick={() => login("signup")}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent cursor-pointer"
+            >
+              Registrera
+            </button>
+          </div>
+        )
       )}
     </header>
   );

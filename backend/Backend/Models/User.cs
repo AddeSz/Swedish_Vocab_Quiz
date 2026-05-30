@@ -1,17 +1,14 @@
-// Supports dual auth: Google OAuth and email/password. A user may have one or both.
-// GoogleSubject is null for email-only accounts; PasswordHash is null for Google-only accounts.
+using System.ComponentModel.DataAnnotations;
+
 public class User
 {
   public Guid Id { get; set; }
-  public string? GoogleSubject { get; set; }
+  public string Auth0Subject { get; set; } = string.Empty;
   public string Email { get; set; } = string.Empty;
+  [MinLength(3)]
+  [MaxLength(20)]
   public string DisplayName { get; set; } = string.Empty;
   public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-  public string? PasswordHash { get; set; }
-  public bool IsEmailVerified { get; set; } = false;
-  // One-time token cleared after verification; null means already verified or Google account
-  public string? EmailVerificationToken { get; set; }
 
   public int TimedQuizBestStreak { get; set; } = 0;
   public int TimedQuizTotalRuns { get; set; } = 0;

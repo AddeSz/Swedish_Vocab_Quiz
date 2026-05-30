@@ -1,53 +1,34 @@
-import { ArrowRight, CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import api from "../Api";
+import { ArrowRight, Mail } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const VerifyEmail = () => {
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading"
-  );
+  const { user, loading, logout } = useAuth();
 
-  useEffect(() => {
-    const token = searchParams.get("token");
-    if (!token) {
-      setStatus("error");
-      return;
-    }
-    api.get(`/api/auth/verify-email?token=${token}`).then((r) => {
-      setStatus(r.ok ? "success" : "error");
-    });
-  }, [searchParams]);
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <main className="flex justify-center px-6 py-14 animate-in">
       <div className="w-full max-w-sm flex flex-col gap-4 items-center text-center">
-        {status === "loading" && (
-          <Loader2 size={32} className="animate-spin text-(--accent)" />
-        )}
-        {status === "success" && (
-          <>
-            <CheckCircle2 size={40} className="text-green-600" />
-            <h1>Verifierad!</h1>
-            <p className="text-sm text-(--text)">Din e-post har verifierats.</p>
-            <Link
-              to="/login"
-              className="flex items-center gap-1 text-sm text-(--accent) font-medium"
-            >
-              Gå till inloggning <ArrowRight size={14} />
-            </Link>
-          </>
-        )}
-        {status === "error" && (
-          <>
-            <XCircle size={40} className="text-red-500" />
-            <h1>Misslyckades</h1>
-            <p className="text-sm text-(--text)">
-              Ogiltig eller redan använd token.
-            </p>
-          </>
-        )}
+        <Mail size={40} className="text-(--accent)" />
+        <h1>Kolla din e-post</h1>
+        <p className="text-sm text-(--text)">
+          Vi har skickat en verifieringslänk till din e-post. Klicka på länken
+          för att aktivera ditt konto.
+        </p>
+        <a
+          href="/"
+          className="flex items-center gap-1 text-sm text-(--accent) font-medium"
+        >
+          Fortsätt till sidan <ArrowRight size={14} />
+        </a>
+        <button
+          onClick={() => logout()}
+          className="text-sm px-4 py-2 rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors bg-transparent cursor-pointer"
+        >
+          Använd ett annat konto
+        </button>
       </div>
     </main>
   );

@@ -52,6 +52,8 @@ const Settings = () => {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                minLength={3}
+                maxLength={20}
                 className="flex-1 bg-transparent border-none outline-none text-sm text-(--text-h)"
                 required
               />
