@@ -1,93 +1,77 @@
-# Developer Setup
+# Ordivo
 
-## Prerequisites
+Ordivo is the app for anyone who wants to strengthen their Swedish vocabulary. Test your knowledge with quizzes, discover new words, and challenge yourself at different levels. Whether you're studying, preparing for exams, or simply want to improve your Swedish, Ordivo helps you learn more every day.
 
-Make sure you have the following installed:
+## Tech Stack
+
+**Backend:** ASP.NET Core (.NET 10), Entity Framework Core, PostgreSQL, Auth0 (JWT)
+
+**Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, Auth0
+
+---
+
+## Developer Setup
+
+### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js + npm](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [EF Core CLI tools](https://learn.microsoft.com/en-us/ef/core/cli/dotnet)
 
-Install EF Core CLI globally if you haven't:
-
 ```bash
 dotnet tool install --global dotnet-ef
 ```
 
----
-
-## 1. Start the Database
-
-Make sure Docker Desktop is running, then start the Postgres container:
+### 1. Start the Database
 
 ```bash
 docker start swedish-quiz
 ```
 
-If you're setting up for the first time and the container doesn't exist yet:
+First-time setup:
 
 ```bash
 docker run --name swedish-quiz -e POSTGRES_PASSWORD=devpassword -e POSTGRES_DB=swedishquiz -e POSTGRES_USER=postgres -p 5432:5432 -d postgres
 ```
 
-Verify it's running:
+### 2. Run Database Migrations
 
-```bash
-docker ps
-```
-
-You should see `swedish-quiz` in the list.
-
----
-
-## 2. Run Database Migrations
-
-From the `backend/Backend` directory:
+From `backend/Backend`:
 
 ```bash
 dotnet ef database update
 ```
 
-This applies all pending migrations and creates the tables if they don't exist yet.
+### 3. Run the Backend
 
----
-
-## 3. Run the Backend
-
-From the `backend/Backend` directory:
+From `backend/Backend`:
 
 ```bash
 dotnet run
 ```
 
-The API will be available at `https://localhost:5001` (or the port shown in the terminal).
+### 4. Run the Frontend
 
----
-
-## 4. Run the Frontend
-
-From the `frontend` directory:
+From `frontend`:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The React app will be available at `http://localhost:5173` (Vite default).
-
 ---
 
-## Adding a New Migration
+## Migrations
 
-After changing any model:
+Add a new migration after changing any model:
 
 ```bash
-dotnet ef migrations add YourMigrationName
+dotnet ef migrations add MigrationName
 dotnet ef database update
 ```
 
-## Removing the Last Migration (if not yet applied)
+Remove the last migration (if not yet applied):
 
 ```bash
 dotnet ef migrations remove
@@ -97,7 +81,7 @@ dotnet ef migrations remove
 
 ## Connection String
 
-Configured in `appsettings.Development.json`:
+Configured in `backend/Backend/appsettings.Development.json`:
 
 ```json
 "ConnectionStrings": {
@@ -105,4 +89,4 @@ Configured in `appsettings.Development.json`:
 }
 ```
 
-> This file is for local development only.
+> Local development only.

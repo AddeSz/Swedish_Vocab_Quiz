@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531084708_NormalizeWordModel")]
+    partial class NormalizeWordModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,12 +37,12 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("WordFormId")
+                    b.Property<Guid>("WordMeaningId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WordFormId");
+                    b.HasIndex("WordMeaningId");
 
                     b.ToTable("Definitions");
                 });
@@ -57,12 +60,12 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("WordFormId")
+                    b.Property<Guid>("WordMeaningId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WordFormId");
+                    b.HasIndex("WordMeaningId");
 
                     b.ToTable("Examples");
                 });
@@ -160,7 +163,7 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("WordFormCount")
+                    b.Property<int>("WordMeaningCount")
                         .HasColumnType("integer");
 
                     b.Property<string>("WordType")
@@ -172,17 +175,17 @@ namespace backend.Migrations
                     b.ToTable("Words");
                 });
 
-            modelBuilder.Entity("WordForm", b =>
+            modelBuilder.Entity("WordMeaning", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("FormNo")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Graminfo")
                         .HasColumnType("text");
+
+                    b.Property<int>("MeaningNo")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("WordId")
                         .HasColumnType("uuid");
@@ -191,29 +194,29 @@ namespace backend.Migrations
 
                     b.HasIndex("WordId");
 
-                    b.ToTable("WordForms");
+                    b.ToTable("WordMeanings");
                 });
 
             modelBuilder.Entity("Definition", b =>
                 {
-                    b.HasOne("WordForm", "WordForm")
+                    b.HasOne("WordMeaning", "WordMeaning")
                         .WithMany("Definitions")
-                        .HasForeignKey("WordFormId")
+                        .HasForeignKey("WordMeaningId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("WordForm");
+                    b.Navigation("WordMeaning");
                 });
 
             modelBuilder.Entity("Example", b =>
                 {
-                    b.HasOne("WordForm", "WordForm")
+                    b.HasOne("WordMeaning", "WordMeaning")
                         .WithMany("Examples")
-                        .HasForeignKey("WordFormId")
+                        .HasForeignKey("WordMeaningId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("WordForm");
+                    b.Navigation("WordMeaning");
                 });
 
             modelBuilder.Entity("UserWordProgress", b =>
@@ -233,10 +236,10 @@ namespace backend.Migrations
                     b.Navigation("Word");
                 });
 
-            modelBuilder.Entity("WordForm", b =>
+            modelBuilder.Entity("WordMeaning", b =>
                 {
                     b.HasOne("Word", "Word")
-                        .WithMany("WordForms")
+                        .WithMany("WordMeanings")
                         .HasForeignKey("WordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -253,10 +256,10 @@ namespace backend.Migrations
                 {
                     b.Navigation("UserWordProgresses");
 
-                    b.Navigation("WordForms");
+                    b.Navigation("WordMeanings");
                 });
 
-            modelBuilder.Entity("WordForm", b =>
+            modelBuilder.Entity("WordMeaning", b =>
                 {
                     b.Navigation("Definitions");
 

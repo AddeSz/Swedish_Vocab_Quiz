@@ -1,9 +1,8 @@
 public class WordDto
 {
-  public Guid Id { get; set; }
-  public string Text { get; set; } = string.Empty;
-  public string Definition { get; set; } = string.Empty;
-  public string PartOfSpeech { get; set; } = string.Empty;
-  public string DifficultyLevel { get; set; } = string.Empty;
-  public double FrequencyRank { get; set; }
+    public Guid Id { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public string WordType { get; set; } = string.Empty;
+    public int WordFormCount { get; set; }
+    public List<WordFormDto> Meanings { get; set; } = [];
 }
