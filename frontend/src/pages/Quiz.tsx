@@ -11,7 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../Api";
 
 interface QuizQuestion {
-  wordId: string;
+  wordFormId: string;
   word: string;
   options: string[];
   correctIndex: number;
@@ -22,6 +22,7 @@ interface QuizResult {
   correctDefinition: string;
   correctWord: string;
   nextReviewDate: string;
+  examples: string[];
 }
 
 type Phase = "loading" | "question" | "result" | "error";
@@ -93,7 +94,7 @@ const Quiz = () => {
     const isCorrect = index === question.correctIndex;
     try {
       const res = await api.post("/api/quiz/answer", {
-        wordId: question.wordId,
+        wordFormId: question.wordFormId,
         isCorrect
       });
       const data = await res.json();

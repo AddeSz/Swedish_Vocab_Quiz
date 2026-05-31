@@ -5,7 +5,8 @@ import { useAuth } from "../context/AuthContext";
 const Login = () => {
   const { login } = useAuth();
   const location = useLocation();
-  const screenHint = (location.state as any)?.screen_hint;
+  const screenHint = (location.state as { screen_hint?: string } | null)
+    ?.screen_hint;
 
   useEffect(() => {
     login(screenHint);

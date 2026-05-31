@@ -34,12 +34,11 @@ const Home = () => {
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-(--accent)">
           <Sparkles size={14} />
-          Svenska · B1–C2
+          Svenska
         </div>
         <h1>Ordivo</h1>
         <p className="text-base leading-relaxed text-(--text) max-w-lg">
-          Fördjupa ditt svenska ordförråd med definitionsbaserade quiz anpassade
-          för avancerade inlärare och flytande talare.
+          Träna ditt ordförråd varje dag med quiz och utmaningar.
         </p>
       </section>
 
@@ -50,18 +49,13 @@ const Home = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {quizModes.map((mode) => {
             const Icon = mode.icon;
-            const Wrapper = mode.available ? Link : "div";
-            const wrapperProps = mode.available ? { to: mode.path! } : {};
-            return (
-              <Wrapper
-                key={mode.id}
-                {...(wrapperProps as any)}
-                className={`group flex flex-col gap-4 p-5 border border-(--border) rounded-2xl transition-all bg-(--bg-elevated) no-underline ${
-                  mode.available
-                    ? "hover:border-(--accent-border) hover:shadow-(--shadow) cursor-pointer"
-                    : "opacity-50"
-                }`}
-              >
+            const className = `group flex flex-col gap-4 p-5 border border-(--border) rounded-2xl transition-all bg-(--bg-elevated) no-underline ${
+              mode.available
+                ? "hover:border-(--accent-border) hover:shadow-(--shadow) cursor-pointer"
+                : "opacity-50"
+            }`;
+            const content = (
+              <>
                 <div className="w-9 h-9 rounded-xl bg-(--accent-bg) flex items-center justify-center text-(--accent)">
                   <Icon size={18} />
                 </div>
@@ -82,7 +76,16 @@ const Home = () => {
                     Kommer snart
                   </span>
                 )}
-              </Wrapper>
+              </>
+            );
+            return mode.available ? (
+              <Link key={mode.id} to={mode.path!} className={className}>
+                {content}
+              </Link>
+            ) : (
+              <div key={mode.id} className={className}>
+                {content}
+              </div>
             );
           })}
         </div>
@@ -93,9 +96,11 @@ const Home = () => {
           Om appen
         </h2>
         <p className="text-sm leading-loose text-(--text) max-w-xl">
-          Baserad på Kelly-listan, en frekvenslista med 8 425 svenska lemman —
-          fokuserar den här appen på ord på nivå B1 till C2. Definitionerna är
-          på svenska, utan översättningar, för att träna genuint ordförståelse.
+          Ordivo är appen för dig som vill stärka ditt svenska ordförråd. Testa
+          dina kunskaper med quiz, upptäck nya ord och utmana dig själv på olika
+          nivåer. Oavsett om du studerar, förbereder dig inför prov eller bara
+          vill bli bättre på svenska hjälper Ordivo dig att lära dig mer varje
+          dag.
         </p>
       </section>
     </main>
