@@ -1,6 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { createContext, useContext, useEffect, useState } from "react";
-import api, { setTokenGetter } from "../Api";
+import api, { setTokenGetter } from "../apiClient";
 
 interface User {
   id: string;
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUser = async () => {
     try {
-      const res = await api.get("/api/auth/me");
+      const res = await api.auth.getMe();
       if (res.ok) {
         const profile: User = await res.json();
         setUser(profile);

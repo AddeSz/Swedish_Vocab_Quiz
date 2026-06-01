@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import api from "../Api";
+import api from "../apiClient";
 
 interface QuizQuestion {
   wordFormId: string;
@@ -31,13 +31,13 @@ const modeConfig = {
   "ord-definition": {
     title: "Ord → Definition",
     prompt: "Vad betyder",
-    endpoint: "/api/quiz?mode=wordtodefinition",
+    mode: "wordtodefinition" as const,
     correctAnswer: (r: QuizResult) => r.correctDefinition
   },
   "definition-ord": {
     title: "Definition → Ord",
     prompt: "Vilket ord betyder",
-    endpoint: "/api/quiz?mode=definitiontoword",
+    mode: "definitiontoword" as const,
     correctAnswer: (r: QuizResult) => r.correctWord
   }
 };
@@ -54,7 +54,7 @@ const Quiz = () => {
   const prefetchedRef = useRef<Promise<QuizQuestion> | null>(null);
 
   const fetchFromApi = async (): Promise<QuizQuestion> => {
-    const res = await api.get(config.endpoint);
+    const res = await api.quiz.getQuestion(config.mode);
     if (!res.ok) throw new Error();
     return res.json();
   };
@@ -85,7 +85,35 @@ const Quiz = () => {
       navigate("/quiz");
       return;
     }
-    fetchQuestion();
+
+    let cancelled = false;
+
+    const load = async () => {
+      setPhase("loading");
+      setSelected(null);
+      setResult(null);
+      try {
+        const data = prefetchedRef.current
+          ? await prefetchedRef.current
+          : await fetchFromApi();
+        prefetchedRef.current = null;
+        if (!cancelled) {
+          setQuestion(data);
+          setPhase("question");
+        }
+      } catch {
+        prefetchedRef.current = null;
+        if (!cancelled) {
+          setPhase("error");
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode]);
 
   const handleAnswer = async (index: number) => {
@@ -93,10 +121,7 @@ const Quiz = () => {
     setSelected(index);
     const isCorrect = index === question.correctIndex;
     try {
-      const res = await api.post("/api/quiz/answer", {
-        wordFormId: question.wordFormId,
-        isCorrect
-      });
+      const res = await api.quiz.submitAnswer(question.wordFormId, isCorrect);
       const data = await res.json();
       setResult(data);
       setPhase("result");

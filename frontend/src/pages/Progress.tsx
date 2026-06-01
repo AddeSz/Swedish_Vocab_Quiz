@@ -8,7 +8,7 @@ import {
   XCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import api from "../Api";
+import api from "../apiClient";
 import { useAuth } from "../context/AuthContext";
 
 interface ProgressData {
@@ -29,8 +29,8 @@ const Progress = () => {
       setLoading(false);
       return;
     }
-    api
-      .get("/api/progress")
+    api.progress
+      .get()
       .then((r) => r.json())
       .then((d) => {
         setData(d);

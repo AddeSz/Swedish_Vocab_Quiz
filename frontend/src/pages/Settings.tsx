@@ -1,6 +1,6 @@
 import { CheckCircle2, Mail, Save, User } from "lucide-react";
 import { useState } from "react";
-import api from "../Api";
+import api from "../apiClient";
 import { useAuth } from "../context/AuthContext";
 
 const Settings = () => {
@@ -27,7 +27,7 @@ const Settings = () => {
     setSaved(false);
     setError("");
 
-    const res = await api.patch("/api/auth/settings", { displayName });
+    const res = await api.auth.updateSettings(displayName);
     if (res.ok) {
       await refreshUser();
       setSaved(true);

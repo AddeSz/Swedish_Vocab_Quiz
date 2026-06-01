@@ -16,7 +16,7 @@ const authHeaders = async (): Promise<HeadersInit> => {
   }
 };
 
-const api = {
+const request = {
   get: async (path: string) => {
     const headers = await authHeaders();
     return fetch(`${BASE_URL}${path}`, { headers });
@@ -26,7 +26,7 @@ const api = {
     return fetch(`${BASE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify(body),
+      body: JSON.stringify(body)
     });
   },
   patch: async (path: string, body: unknown) => {
@@ -34,9 +34,26 @@ const api = {
     return fetch(`${BASE_URL}${path}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify(body),
+      body: JSON.stringify(body)
     });
+  }
+};
+
+const api = {
+  auth: {
+    getMe: () => request.get("/api/auth/me"),
+    updateSettings: (displayName: string) =>
+      request.patch("/api/auth/settings", { displayName })
   },
+  quiz: {
+    getQuestion: (mode: "wordtodefinition" | "definitiontoword") =>
+      request.get(`/api/quiz?mode=${mode}`),
+    submitAnswer: (wordFormId: string, isCorrect: boolean) =>
+      request.post("/api/quiz/answer", { wordFormId, isCorrect })
+  },
+  progress: {
+    get: () => request.get("/api/progress")
+  }
 };
 
 export default api;
