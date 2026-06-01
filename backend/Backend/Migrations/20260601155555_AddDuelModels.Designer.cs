@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260601155555_AddDuelModels")]
+    partial class AddDuelModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,7 +56,13 @@ namespace backend.Migrations
                     b.Property<DateTime>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("Player1Id")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("Player1UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Player2Id")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("Player2UserId")
@@ -64,9 +73,9 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Player1UserId");
+                    b.HasIndex("Player1Id");
 
-                    b.HasIndex("Player2UserId");
+                    b.HasIndex("Player2Id");
 
                     b.ToTable("DuelHistories");
                 });
@@ -255,14 +264,14 @@ namespace backend.Migrations
                 {
                     b.HasOne("User", "Player1")
                         .WithMany()
-                        .HasForeignKey("Player1UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("Player1Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("User", "Player2")
                         .WithMany()
-                        .HasForeignKey("Player2UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("Player2Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Player1");

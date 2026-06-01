@@ -3,6 +3,8 @@ import NavBar from "./components/NavBar";
 import ThemeToggle from "./components/ThemeToggle";
 import { AuthProvider } from "./context/AuthContext";
 import AutoLogin from "./pages/AutoLogin";
+import Duel from "./pages/Duel";
+import DuelGame from "./pages/DuelGame";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Progress from "./pages/Progress";
@@ -20,6 +22,8 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/quiz" element={<QuizPicker />} />
           <Route path="/quiz/:mode" element={<Quiz />} />
+          <Route path="/duel" element={<Duel />} />
+          <Route path="/duel/game" element={<DuelGame />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />

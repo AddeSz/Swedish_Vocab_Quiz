@@ -53,6 +53,10 @@ const api = {
   },
   progress: {
     get: () => request.get("/api/progress")
+  },
+  duel: {
+    getStats: () => request.get("/api/duel/stats"),
+    getHistory: () => request.get("/api/duel/history")
   }
 };
 

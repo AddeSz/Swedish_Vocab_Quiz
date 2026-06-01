@@ -1,4 +1,4 @@
-import { ArrowRight, BookText, PenLine, Shuffle, Sparkles } from "lucide-react";
+import { ArrowRight, BookText, PenLine, Shuffle, Sparkles, Swords } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const quizModes = [
@@ -18,6 +18,14 @@ const quizModes = [
     icon: Shuffle,
     available: true,
     path: "/quiz/definition-ord"
+  },
+  {
+    id: "pvp-duel",
+    title: "PvP Duel",
+    description: "Utmana en annan spelare i realtid. 10 frågor, bäst av alla vinner!",
+    icon: Swords,
+    available: true,
+    path: "/duel"
   },
   {
     id: "blank",

@@ -3,7 +3,9 @@ import {
   CheckCircle2,
   Eye,
   LogIn,
+  Swords,
   Target,
+  Trophy,
   UserPlus,
   XCircle
 } from "lucide-react";
@@ -18,9 +20,17 @@ interface ProgressData {
   wordsDueForReview: number;
 }
 
+interface DuelStats {
+  wins: number;
+  ties: number;
+  losses: number;
+  winRate: number;
+}
+
 const Progress = () => {
   const { user, loading: authLoading, login } = useAuth();
   const [data, setData] = useState<ProgressData | null>(null);
+  const [duelStats, setDuelStats] = useState<DuelStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,13 +39,14 @@ const Progress = () => {
       setLoading(false);
       return;
     }
-    api.progress
-      .get()
-      .then((r) => r.json())
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      });
+    Promise.all([
+      api.progress.get().then((r) => r.json()),
+      api.duel.getStats().then((r) => r.json())
+    ]).then(([progressData, duelData]) => {
+      setData(progressData);
+      setDuelStats(duelData);
+      setLoading(false);
+    });
   }, [user, authLoading]);
 
   if (authLoading || loading) {
@@ -97,7 +108,7 @@ const Progress = () => {
     <main className="px-6 py-14 animate-in">
       <h1 className="mb-10">Dina framsteg</h1>
 
-      <div className="grid grid-cols-2 gap-3 max-w-xl">
+      <div className="grid grid-cols-2 gap-3 max-w-xl mb-8">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
@@ -126,6 +137,53 @@ const Progress = () => {
           </span>
         </div>
       </div>
+
+      {duelStats && (duelStats.wins + duelStats.ties + duelStats.losses > 0) && (
+        <div className="max-w-xl">
+          <h2 className="text-xl font-semibold mb-4 text-(--text-h) flex items-center gap-2">
+            <Swords size={20} className="text-(--accent)" />
+            PvP Duel Statistik
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)">
+              <Trophy size={18} className="text-(--accent)" />
+              <span className="text-3xl font-medium tracking-tight text-(--text-h)">
+                {duelStats.wins}
+              </span>
+              <span className="text-xs tracking-wide text-(--text)">
+                Vinster
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)">
+              <Target size={18} className="text-(--accent)" />
+              <span className="text-3xl font-medium tracking-tight text-(--text-h)">
+                {duelStats.winRate}%
+              </span>
+              <span className="text-xs tracking-wide text-(--text)">
+                Vinstprocent
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)">
+              <CheckCircle2 size={18} className="text-(--accent)" />
+              <span className="text-3xl font-medium tracking-tight text-(--text-h)">
+                {duelStats.ties}
+              </span>
+              <span className="text-xs tracking-wide text-(--text)">
+                Oavgjorda
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 p-6 border border-(--border) rounded-2xl bg-(--bg-elevated)">
+              <XCircle size={18} className="text-(--accent)" />
+              <span className="text-3xl font-medium tracking-tight text-(--text-h)">
+                {duelStats.losses}
+              </span>
+              <span className="text-xs tracking-wide text-(--text)">
+                Förluster
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
