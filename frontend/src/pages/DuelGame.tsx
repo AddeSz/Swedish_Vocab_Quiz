@@ -1,6 +1,6 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
 import { useDuel } from "../context/DuelContext";
 
 type DuelPhase = "question" | "review" | "completed" | "forfeited";
@@ -109,6 +109,9 @@ export default function DuelGame() {
           setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
           setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
         });
+
+        await connection.invoke("JoinDuelGroup", duelId);
+        await connection.invoke("ReadyToPlay", duelId);
       } catch (error) {
         console.error("Failed to setup duel:", error);
         navigate("/duel");
@@ -173,7 +176,9 @@ export default function DuelGame() {
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-700 dark:text-gray-300">Reconnecting...</p>
+          <p className="text-xl text-gray-700 dark:text-gray-300">
+            Reconnecting...
+          </p>
         </div>
       </div>
     );
@@ -202,7 +207,9 @@ export default function DuelGame() {
 
   if (phase === "completed" && result) {
     const myFinalScore = isPlayer1 ? result.player1Score : result.player2Score;
-    const theirFinalScore = isPlayer1 ? result.player2Score : result.player1Score;
+    const theirFinalScore = isPlayer1
+      ? result.player2Score
+      : result.player1Score;
     const myUserId = user?.sub;
     const isWinner = result.winnerUserId === myUserId;
     const isTie = result.winnerUserId === null;
@@ -223,11 +230,15 @@ export default function DuelGame() {
           <div className="flex justify-around mb-8 text-center">
             <div>
               <p className="text-gray-600 dark:text-gray-400">You</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{myFinalScore}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                {myFinalScore}
+              </p>
             </div>
             <div>
               <p className="text-gray-600 dark:text-gray-400">{opponentName}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{theirFinalScore}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                {theirFinalScore}
+              </p>
             </div>
           </div>
 
@@ -258,17 +269,25 @@ export default function DuelGame() {
             <div className="flex justify-between items-center mb-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">You</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{myScore}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {myScore}
+                </p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                   Question {question.questionIndex + 1}/10
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Review ({timeLeft}s)</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Review ({timeLeft}s)
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">{opponentName}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{opponentScore}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {opponentName}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {opponentScore}
+                </p>
               </div>
             </div>
 
@@ -279,22 +298,34 @@ export default function DuelGame() {
             <div className="space-y-3 mb-6">
               {question.options.map((option, index) => {
                 const isCorrect = index === review.correctAnswerIndex;
-                const myAnswer = isPlayer1 ? review.player1Answer : review.player2Answer;
-                const theirAnswer = isPlayer1 ? review.player2Answer : review.player1Answer;
+                const myAnswer = isPlayer1
+                  ? review.player1Answer
+                  : review.player2Answer;
+                const theirAnswer = isPlayer1
+                  ? review.player2Answer
+                  : review.player1Answer;
                 const isMyAnswer = index === myAnswer;
                 const isTheirAnswer = index === theirAnswer;
 
                 let bgColor = "bg-gray-100 dark:bg-gray-700";
-                if (isCorrect) bgColor = "bg-green-100 dark:bg-green-900 border-2 border-green-500";
-                else if (isMyAnswer || isTheirAnswer) bgColor = "bg-red-100 dark:bg-red-900";
+                if (isCorrect)
+                  bgColor =
+                    "bg-green-100 dark:bg-green-900 border-2 border-green-500";
+                else if (isMyAnswer || isTheirAnswer)
+                  bgColor = "bg-red-100 dark:bg-red-900";
 
                 return (
                   <div key={index} className={`p-4 rounded-lg ${bgColor}`}>
-                    <p className="text-gray-900 dark:text-white font-medium">{option}</p>
+                    <p className="text-gray-900 dark:text-white font-medium">
+                      {option}
+                    </p>
                     {(isMyAnswer || isTheirAnswer) && (
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {isMyAnswer && isTheirAnswer ? "Both selected" :
-                         isMyAnswer ? "You selected" : `${opponentName} selected`}
+                        {isMyAnswer && isTheirAnswer
+                          ? "Both selected"
+                          : isMyAnswer
+                            ? "You selected"
+                            : `${opponentName} selected`}
                       </p>
                     )}
                   </div>
@@ -304,7 +335,9 @@ export default function DuelGame() {
 
             <div className="text-center">
               {isReady ? (
-                <p className="text-gray-600 dark:text-gray-400">Waiting for opponent...</p>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Waiting for opponent...
+                </p>
               ) : (
                 <button
                   onClick={handleReady}
@@ -328,17 +361,25 @@ export default function DuelGame() {
             <div className="flex justify-between items-center mb-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">You</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{myScore}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {myScore}
+                </p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                   Question {question.questionIndex + 1}/10
                 </p>
-                <p className="text-3xl font-bold text-indigo-600">{timeLeft}s</p>
+                <p className="text-3xl font-bold text-indigo-600">
+                  {timeLeft}s
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">{opponentName}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{opponentScore}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {opponentName}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {opponentScore}
+                </p>
               </div>
             </div>
 
@@ -364,7 +405,8 @@ export default function DuelGame() {
 
             {selectedAnswer !== null && (
               <p className="text-center text-gray-600 dark:text-gray-400 mt-4">
-                Answer submitted. You can change your answer until time runs out.
+                Answer submitted. You can change your answer until time runs
+                out.
               </p>
             )}
           </div>

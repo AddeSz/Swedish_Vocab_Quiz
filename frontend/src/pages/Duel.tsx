@@ -24,19 +24,11 @@ export default function Duel() {
             playerNumber: number;
           }) => {
             console.log("MatchFound data:", data);
-            try {
-              console.log("Invoking JoinDuelGroup with:", data.duelId);
-              await connection.invoke("JoinDuelGroup", data.duelId);
-
-              navigate(
-                `/duel/game?id=${data.duelId}&opponent=${encodeURIComponent(
-                  data.opponentName
-                )}&player=${data.playerNumber}`
-              );
-            } catch (err) {
-              console.error("Failed to join duel group:", err);
-              setError("Failed to join match. Please try again.");
-            }
+            navigate(
+              `/duel/game?id=${data.duelId}&opponent=${encodeURIComponent(
+                data.opponentName
+              )}&player=${data.playerNumber}`
+            );
           }
         );
 

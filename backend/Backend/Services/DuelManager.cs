@@ -258,6 +258,16 @@ public class DuelManager
     }
   }
 
+  public async Task MarkPlayerReadyToPlay(Guid duelId)
+  {
+    var duel = GetDuel(duelId);
+    if (duel == null) return;
+
+    duel.PlayersJoined++;
+    if (duel.PlayersJoined == 2)
+      await StartQuestion(duelId);
+  }
+
   private async Task AdvanceToNextQuestion(Guid duelId)
   {
     var duel = GetDuel(duelId);

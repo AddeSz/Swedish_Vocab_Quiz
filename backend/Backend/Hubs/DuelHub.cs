@@ -52,7 +52,6 @@ public class DuelHub : Hub
 
   public async Task JoinDuelGroup(string duelId)
   {
-    Console.WriteLine($"JoinDuelGroup received: '{duelId}'");
     if (!Guid.TryParse(duelId, out var parsedDuelId))
       throw new HubException("Invalid duel ID");
 
@@ -64,12 +63,6 @@ public class DuelHub : Hub
 
     await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
     _duelManager.UpdateConnectionId(userId, Context.ConnectionId);
-
-    duel.PlayersJoined++;
-    if (duel.PlayersJoined == 2)
-    {
-      await _duelManager.StartQuestion(parsedDuelId);
-    }
   }
 
   public async Task LeaveMatchmaking()
@@ -94,6 +87,20 @@ public class DuelHub : Hub
 
     var user = await GetCurrentUserAsync();
     await _duelManager.MarkPlayerReady(parsedDuelId, user.Id);
+  }
+
+  public async Task ReadyToPlay(string duelId)
+  {
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+    var duel = _duelManager.GetDuel(parsedDuelId);
+    if (duel == null) throw new HubException("Duel not found");
+    if (duel.Player1UserId != user.Id && duel.Player2UserId != user.Id)
+      throw new HubException("Not a participant");
+
+    await _duelManager.MarkPlayerReadyToPlay(parsedDuelId);
   }
 
   public async Task ReconnectToDuel(string duelId)
