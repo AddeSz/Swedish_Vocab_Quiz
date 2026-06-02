@@ -1,7 +1,8 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import ThemeToggle from "./components/ThemeToggle";
 import { AuthProvider } from "./context/AuthContext";
+import { DuelProvider } from "./context/DuelContext";
 import AutoLogin from "./pages/AutoLogin";
 import Duel from "./pages/Duel";
 import DuelGame from "./pages/DuelGame";
@@ -22,8 +23,10 @@ const App = () => {
           <Route path="/" element={<Home />} />
           <Route path="/quiz" element={<QuizPicker />} />
           <Route path="/quiz/:mode" element={<Quiz />} />
-          <Route path="/duel" element={<Duel />} />
-          <Route path="/duel/game" element={<DuelGame />} />
+          <Route element={<DuelProvider><Outlet /></DuelProvider>}>
+            <Route path="/duel" element={<Duel />} />
+            <Route path="/duel/game" element={<DuelGame />} />
+          </Route>
           <Route path="/progress" element={<Progress />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />

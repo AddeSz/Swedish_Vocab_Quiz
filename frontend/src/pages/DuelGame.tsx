@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import { useAuth0 } from "@auth0/auth0-react";
+import { useDuel } from "../context/DuelContext";
 
 type DuelPhase = "question" | "review" | "completed" | "forfeited";
 
@@ -41,9 +41,9 @@ export default function DuelGame() {
   const playerNumber = parseInt(searchParams.get("player") ?? "1");
   const isPlayer1 = playerNumber === 1;
   const navigate = useNavigate();
-  const { getAccessTokenSilently, user } = useAuth0();
+  const { user } = useAuth0();
+  const { connection, connect } = useDuel();
 
-  const [connection, setConnection] = useState<HubConnection | null>(null);
   const [phase, setPhase] = useState<DuelPhase>("question");
   const [question, setQuestion] = useState<DuelQuestion | null>(null);
   const [review, setReview] = useState<DuelReview | null>(null);
@@ -62,23 +62,16 @@ export default function DuelGame() {
       return;
     }
 
-    const connectHub = async () => {
+    const setupDuel = async () => {
       try {
-        const token = await getAccessTokenSilently();
-        const hubConnection = new HubConnectionBuilder()
-          .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
-            accessTokenFactory: () => token
-          })
-          .withAutomaticReconnect({
-            nextRetryDelayInMilliseconds: () => 2000
-          })
-          .build();
+        await connect();
+        if (!connection) return;
 
-        hubConnection.onreconnecting(() => setReconnecting(true));
-        hubConnection.onreconnected(async () => {
+        connection.onreconnecting(() => setReconnecting(true));
+        connection.onreconnected(async () => {
           setReconnecting(false);
           try {
-            await hubConnection.invoke("ReconnectToDuel", duelId);
+            await connection.invoke("ReconnectToDuel", duelId);
           } catch (err) {
             console.error("Reconnection failed:", err);
             setError("Failed to reconnect. Returning to menu...");
@@ -86,15 +79,7 @@ export default function DuelGame() {
           }
         });
 
-        hubConnection.onclose((err) => {
-          if (err) {
-            console.error("Connection closed with error:", err);
-            setError("Connection lost. Returning to menu...");
-            setTimeout(() => navigate("/duel"), 3000);
-          }
-        });
-
-        hubConnection.on("QuestionStarted", (data: DuelQuestion) => {
+        connection.on("QuestionStarted", (data: DuelQuestion) => {
           setPhase("question");
           setQuestion(data);
           setSelectedAnswer(null);
@@ -102,7 +87,7 @@ export default function DuelGame() {
           setTimeLeft(10);
         });
 
-        hubConnection.on("ReviewStarted", (data: DuelReview) => {
+        connection.on("ReviewStarted", (data: DuelReview) => {
           setPhase("review");
           setReview(data);
           setMyScore(isPlayer1 ? data.player1Score : data.player2Score);
@@ -110,36 +95,28 @@ export default function DuelGame() {
           setTimeLeft(5);
         });
 
-        hubConnection.on("DuelCompleted", (data: DuelResult) => {
+        connection.on("DuelCompleted", (data: DuelResult) => {
           setPhase("completed");
           setResult(data);
         });
 
-        hubConnection.on("Forfeit", () => {
+        connection.on("Forfeit", () => {
           setPhase("forfeited");
         });
 
-        hubConnection.on("StateRestored", (state: any) => {
+        connection.on("StateRestored", (state: any) => {
           setPhase(state.phase.toLowerCase());
           setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
           setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
         });
-
-        await hubConnection.start();
-        await hubConnection.invoke("JoinDuelGroup", duelId);
-        setConnection(hubConnection);
       } catch (error) {
-        console.error("Failed to connect:", error);
+        console.error("Failed to setup duel:", error);
         navigate("/duel");
       }
     };
 
-    connectHub();
-
-    return () => {
-      connection?.stop();
-    };
-  }, [duelId]);
+    setupDuel();
+  }, [duelId, connection, connect]);
 
   useEffect(() => {
     if (phase === "question" && timeLeft > 0) {

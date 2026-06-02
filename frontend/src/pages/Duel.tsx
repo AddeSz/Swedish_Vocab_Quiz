@@ -1,38 +1,37 @@
-import { useAuth0 } from "@auth0/auth0-react";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDuel } from "../context/DuelContext";
 
 export default function Duel() {
-  const connectionRef = useRef<HubConnection | null>(null);
-  const [connection, setConnection] = useState<HubConnection | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const navigate = useNavigate();
-  const { getAccessTokenSilently } = useAuth0();
+  const { connection, connect } = useDuel();
 
   useEffect(() => {
-    const connectHub = async () => {
+    const setupMatchmaking = async () => {
       try {
-        const token = await getAccessTokenSilently();
-        const hubConnection = new HubConnectionBuilder()
-          .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
-            accessTokenFactory: () => token
-          })
-          .withAutomaticReconnect()
-          .build();
+        await connect();
 
-        hubConnection.on(
+        if (!connection) return;
+
+        connection.on(
           "MatchFound",
           async (data: {
-            DuelId: string;
-            OpponentName: string;
-            PlayerNumber: number;
+            duelId: string;
+            opponentName: string;
+            playerNumber: number;
           }) => {
+            console.log("MatchFound data:", data);
             try {
-              await hubConnection.invoke("JoinDuelGroup", data.DuelId);
+              console.log("Invoking JoinDuelGroup with:", data.duelId);
+              await connection.invoke("JoinDuelGroup", data.duelId);
+
               navigate(
-                `/duel/game?id=${data.DuelId}&opponent=${encodeURIComponent(data.OpponentName)}&player=${data.PlayerNumber}`
+                `/duel/game?id=${data.duelId}&opponent=${encodeURIComponent(
+                  data.opponentName
+                )}&player=${data.playerNumber}`
               );
             } catch (err) {
               console.error("Failed to join duel group:", err);
@@ -41,38 +40,33 @@ export default function Duel() {
           }
         );
 
-        hubConnection.onclose(() => {
-          if (searching) {
-            setError("Connection lost. Please try again.");
-            setSearching(false);
-          }
+        connection.onclose(() => {
+          setSearching(false);
+          setError("Connection lost. Please try again.");
         });
 
-        await hubConnection.start();
-        connectionRef.current = hubConnection;
-        setConnection(hubConnection);
-        await hubConnection.invoke("JoinMatchmaking");
+        await connection.invoke("JoinMatchmaking");
         setSearching(true);
-      } catch (error) {
-        console.error("Failed to connect to hub:", error);
+      } catch (err) {
+        console.error("Failed to connect to hub:", err);
         setError(
           "Failed to connect to matchmaking. Please check your connection and try again."
         );
       }
     };
 
-    connectHub();
+    setupMatchmaking();
 
     return () => {
-      connectionRef.current?.invoke("LeaveMatchmaking").catch(console.error);
-      connectionRef.current?.stop();
+      connection?.invoke("LeaveMatchmaking").catch(console.error);
     };
-  }, []);
+  }, [connection, connect]);
 
   const handleCancel = async () => {
-    if (connectionRef.current) {
-      await connectionRef.current.invoke("LeaveMatchmaking");
-      await connectionRef.current.stop();
+    try {
+      await connection?.invoke("LeaveMatchmaking");
+    } catch (err) {
+      console.error("Failed to leave matchmaking:", err);
     }
     navigate("/");
   };
@@ -87,6 +81,7 @@ export default function Duel() {
         {error ? (
           <>
             <p className="text-red-600 dark:text-red-400 mb-6">{error}</p>
+
             <button
               onClick={() => navigate("/")}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
@@ -99,9 +94,11 @@ export default function Duel() {
             <div className="mb-6">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
             </div>
+
             <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">
               Searching for opponent...
             </p>
+
             <button
               onClick={handleCancel}
               className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"

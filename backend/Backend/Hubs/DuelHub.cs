@@ -8,92 +8,114 @@ namespace Backend.Hubs;
 public class DuelHub : Hub
 {
   private readonly DuelManager _duelManager;
-  private readonly AppDbContext _dbContext;
+  private readonly CurrentUserService _currentUserService;
 
-  public DuelHub(DuelManager duelManager, AppDbContext dbContext)
+  public DuelHub(
+      DuelManager duelManager,
+      CurrentUserService currentUserService)
   {
     _duelManager = duelManager;
-    _dbContext = dbContext;
+    _currentUserService = currentUserService;
   }
 
-  private Guid GetUserId()
+  private async Task<User> GetCurrentUserAsync()
   {
-    var userIdClaim = Context.User?.FindFirst("sub")?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) throw new HubException("User not authenticated");
-    return Guid.Parse(userIdClaim);
+    try
+    {
+      return await _currentUserService.GetRequiredUserAsync();
+    }
+    catch (UnauthorizedAccessException)
+    {
+      throw new HubException("User not authenticated");
+    }
   }
 
   public override async Task OnConnectedAsync()
   {
-    var userId = GetUserId();
-    var user = await _dbContext.Users.FindAsync(userId);
-    if (user != null)
-    {
-      await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
-    }
+    var user = await GetCurrentUserAsync();
+
+    await Groups.AddToGroupAsync(
+        Context.ConnectionId,
+        $"user-{user.Id}");
     await base.OnConnectedAsync();
   }
 
   public async Task JoinMatchmaking()
   {
-    var userId = GetUserId();
-    var user = await _dbContext.Users.FindAsync(userId);
-    if (user == null) throw new HubException("User not found");
-    
-    _duelManager.EnqueueUser(userId, user.DisplayName, Context.ConnectionId);
+    var user = await GetCurrentUserAsync();
+
+    _duelManager.EnqueueUser(
+        user.Id,
+        user.DisplayName,
+        Context.ConnectionId);
   }
 
-  public async Task JoinDuelGroup(Guid duelId)
+  public async Task JoinDuelGroup(string duelId)
   {
-    var userId = GetUserId();
-    var duel = _duelManager.GetDuel(duelId);
+    Console.WriteLine($"JoinDuelGroup received: '{duelId}'");
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+    var userId = user.Id;
+    var duel = _duelManager.GetDuel(parsedDuelId);
     if (duel == null) throw new HubException("Duel not found");
     if (duel.Player1UserId != userId && duel.Player2UserId != userId) throw new HubException("Not a participant");
 
-    await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{duelId}");
+    await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
     _duelManager.UpdateConnectionId(userId, Context.ConnectionId);
 
     duel.PlayersJoined++;
     if (duel.PlayersJoined == 2)
     {
-      await _duelManager.StartQuestion(duelId);
+      await _duelManager.StartQuestion(parsedDuelId);
     }
   }
 
   public async Task LeaveMatchmaking()
   {
-    var userId = GetUserId();
-    _duelManager.DequeueUser(userId);
+    var user = await GetCurrentUserAsync();
+    _duelManager.DequeueUser(user.Id);
   }
 
-  public async Task SubmitAnswer(Guid duelId, int answerIndex)
+  public async Task SubmitAnswer(string duelId, int answerIndex)
   {
-    var userId = GetUserId();
-    await _duelManager.SubmitAnswer(duelId, userId, answerIndex);
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+    await _duelManager.SubmitAnswer(parsedDuelId, user.Id, answerIndex);
   }
 
-  public async Task ReadyForNext(Guid duelId)
+  public async Task ReadyForNext(string duelId)
   {
-    var userId = GetUserId();
-    await _duelManager.MarkPlayerReady(duelId, userId);
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+    await _duelManager.MarkPlayerReady(parsedDuelId, user.Id);
   }
 
-  public async Task ReconnectToDuel(Guid duelId)
+  public async Task ReconnectToDuel(string duelId)
   {
-    var userId = GetUserId();
-    var duel = _duelManager.GetDuel(duelId);
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+    var userId = user.Id;
+    var duel = _duelManager.GetDuel(parsedDuelId);
     if (duel == null) throw new HubException("Duel not found");
     if (duel.Player1UserId != userId && duel.Player2UserId != userId) throw new HubException("Not a participant");
 
-    await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{duelId}");
+    await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
     await _duelManager.HandleReconnect(userId, Context.ConnectionId);
     await Clients.Caller.SendAsync("StateRestored", duel);
   }
 
   public override async Task OnDisconnectedAsync(Exception? exception)
   {
-    var userId = GetUserId();
-    await _duelManager.HandleDisconnect(userId);
+    var user = await GetCurrentUserAsync();
+    await _duelManager.HandleDisconnect(user.Id);
     await base.OnDisconnectedAsync(exception);
   }
 }
