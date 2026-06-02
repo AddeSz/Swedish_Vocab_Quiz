@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { useDuel } from "../context/DuelContext";
 
 export default function Duel() {
@@ -8,8 +9,12 @@ export default function Duel() {
 
   const navigate = useNavigate();
   const { connection, connect } = useDuel();
+  const { user, loading: authLoading, login } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
+
     const setupMatchmaking = async () => {
       try {
         await connect();
@@ -52,7 +57,7 @@ export default function Duel() {
     return () => {
       connection?.invoke("LeaveMatchmaking").catch(console.error);
     };
-  }, [connection, connect]);
+  }, [connection, connect, authLoading, user]);
 
   const handleCancel = async () => {
     try {
@@ -63,11 +68,40 @@ export default function Duel() {
     navigate("/");
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <p className="text-lg text-gray-700 dark:text-gray-300">Laddar...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            PvP Duell
+          </h1>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">
+            Logga in för att spela dueller.
+          </p>
+          <button
+            onClick={() => login()}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+          >
+            Logga in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-          PvP Duel
+          PvP Duell
         </h1>
 
         {error ? (
@@ -78,7 +112,7 @@ export default function Duel() {
               onClick={() => navigate("/")}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
             >
-              Back to Menu
+              Tillbaka till menyn
             </button>
           </>
         ) : searching ? (
@@ -88,19 +122,19 @@ export default function Duel() {
             </div>
 
             <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">
-              Searching for opponent...
+              Söker motståndare...
             </p>
 
             <button
               onClick={handleCancel}
               className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
             >
-              Cancel
+              Avbryt
             </button>
           </>
         ) : (
           <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">
-            Connecting...
+            Ansluter...
           </p>
         )}
       </div>
