@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDuel } from "../context/DuelContext";
@@ -41,7 +40,6 @@ export default function DuelGame() {
   const playerNumber = parseInt(searchParams.get("player") ?? "1");
   const isPlayer1 = playerNumber === 1;
   const navigate = useNavigate();
-  const { user } = useAuth0();
   const { connection, connect } = useDuel();
 
   const [phase, setPhase] = useState<DuelPhase>("question");
@@ -210,9 +208,11 @@ export default function DuelGame() {
     const theirFinalScore = isPlayer1
       ? result.player2Score
       : result.player1Score;
-    const myUserId = user?.sub;
-    const isWinner = result.winnerUserId === myUserId;
     const isTie = result.winnerUserId === null;
+    const isWinner =
+      !isTie &&
+      ((isPlayer1 && result.player1Score > result.player2Score) ||
+        (!isPlayer1 && result.player2Score > result.player1Score));
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
