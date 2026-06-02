@@ -155,28 +155,38 @@ public class DuelManager
   private async Task HandleQuestionTimeout(Guid duelId)
   {
     var duel = GetDuel(duelId);
-    if (duel == null || duel.Phase != DuelPhase.Question) return;
+    if (duel == null || duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
-    await duel.SyncLock.WaitAsync();
+    bool lockAcquired = false;
     try
     {
+      lockAcquired = await duel.SyncLock.WaitAsync(TimeSpan.FromSeconds(5));
+      if (!lockAcquired) return;
+
       if (duel.Phase != DuelPhase.Question) return;
       await StartReview(duelId);
     }
+    catch (ObjectDisposedException)
+    {
+      // duel was cleaned up, safe to ignore
+    }
     finally
     {
-      duel.SyncLock.Release();
+      if (lockAcquired) duel.SyncLock.Release();
     }
   }
 
   public async Task SubmitAnswer(Guid duelId, Guid userId, int answerIndex)
   {
     var duel = GetDuel(duelId);
-    if (duel == null) return;
+    if (duel == null || duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
-    await duel.SyncLock.WaitAsync();
+    bool lockAcquired = false;
     try
     {
+      lockAcquired = await duel.SyncLock.WaitAsync(TimeSpan.FromSeconds(5));
+      if (!lockAcquired) return;
+
       if (duel.Phase != DuelPhase.Question) return;
       if (answerIndex < 0 || answerIndex >= 4) return;
 
@@ -186,12 +196,18 @@ public class DuelManager
       if (duel.Player1Answer.HasValue && duel.Player2Answer.HasValue)
       {
         duel.QuestionTimerCts?.Cancel();
+        duel.SyncLock.Release();
+        lockAcquired = false;
         await StartReview(duelId);
       }
     }
+    catch (ObjectDisposedException)
+    {
+      // duel was cleaned up, safe to ignore
+    }
     finally
     {
-      duel.SyncLock.Release();
+      if (lockAcquired) duel.SyncLock.Release();
     }
   }
 
@@ -237,24 +253,34 @@ public class DuelManager
   public async Task MarkPlayerReady(Guid duelId, Guid userId)
   {
     var duel = GetDuel(duelId);
-    if (duel == null || duel.Phase != DuelPhase.Review) return;
+    if (duel == null || duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
-    await duel.SyncLock.WaitAsync();
+    bool lockAcquired = false;
     try
     {
+      lockAcquired = await duel.SyncLock.WaitAsync(TimeSpan.FromSeconds(5));
+      if (!lockAcquired) return;
+
       if (duel.Phase != DuelPhase.Review) return;
+
       if (duel.Player1UserId == userId) duel.Player1Ready = true;
       else if (duel.Player2UserId == userId) duel.Player2Ready = true;
 
       if (duel.Player1Ready && duel.Player2Ready)
       {
         duel.ReviewTimerCts?.Cancel();
+        duel.SyncLock.Release();
+        lockAcquired = false;
         await AdvanceToNextQuestion(duelId);
       }
     }
+    catch (ObjectDisposedException)
+    {
+      // duel was cleaned up, safe to ignore
+    }
     finally
     {
-      duel.SyncLock.Release();
+      if (lockAcquired) duel.SyncLock.Release();
     }
   }
 
