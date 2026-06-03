@@ -150,7 +150,7 @@ const Quiz = () => {
 
   if (phase === "loading") {
     return (
-      <main className="flex justify-center items-center px-6 py-20">
+      <main className="flex justify-center items-center py-20">
         <Loader2 size={24} className="animate-spin text-(--accent)" />
       </main>
     );
@@ -158,7 +158,7 @@ const Quiz = () => {
 
   if (phase === "error") {
     return (
-      <main className="flex flex-col items-center gap-4 px-6 py-14 animate-in">
+      <main className="flex flex-col items-center gap-4 py-14 animate-in">
         <XCircle size={32} className="text-(--text)" />
         <p className="text-(--text)">Något gick fel.</p>
         <div className="flex gap-3">
@@ -180,8 +180,8 @@ const Quiz = () => {
   }
 
   return (
-    <main className="flex justify-center px-6 py-14 animate-in">
-      <div className="w-full max-w-xl flex flex-col gap-8">
+    <main className="flex justify-center py-14 animate-in">
+      <div className="w-full max-w-2xl flex flex-col gap-8">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium tracking-widest uppercase text-(--text)">
             {config.title}

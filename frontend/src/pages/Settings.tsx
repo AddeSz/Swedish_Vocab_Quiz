@@ -11,13 +11,13 @@ const Settings = () => {
 
   if (loading)
     return (
-      <main className="px-6 py-14">
+      <main className="py-14">
         <p className="text-(--text)">Laddar...</p>
       </main>
     );
   if (!user)
     return (
-      <main className="px-6 py-14">
+      <main className="py-14">
         <p className="text-(--text)">Logga in för att se inställningar.</p>
       </main>
     );
@@ -37,7 +37,7 @@ const Settings = () => {
   };
 
   return (
-    <main className="flex justify-center px-6 py-14 animate-in">
+    <main className="flex justify-center py-14 animate-in">
       <div className="w-full max-w-sm flex flex-col gap-8">
         <h1>Inställningar</h1>
 

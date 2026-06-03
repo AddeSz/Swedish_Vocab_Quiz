@@ -51,7 +51,7 @@ const Progress = () => {
 
   if (authLoading || loading) {
     return (
-      <main className="px-6 py-14">
+      <main className="py-14">
         <p className="text-(--text)">Laddar...</p>
       </main>
     );
@@ -59,7 +59,7 @@ const Progress = () => {
 
   if (!user) {
     return (
-      <main className="px-6 py-14 flex flex-col gap-4 animate-in">
+      <main className="py-14 flex flex-col gap-4 animate-in">
         <h1>Dina framsteg</h1>
         <p className="text-(--text) text-sm">
           Logga in för att se dina framsteg.
@@ -84,7 +84,7 @@ const Progress = () => {
 
   if (!data) {
     return (
-      <main className="px-6 py-14">
+      <main className="py-14">
         <p className="text-(--text)">Något gick fel.</p>
       </main>
     );
@@ -105,10 +105,10 @@ const Progress = () => {
   ];
 
   return (
-    <main className="px-6 py-14 animate-in">
+    <main className="py-14 animate-in">
       <h1 className="mb-10">Dina framsteg</h1>
 
-      <div className="grid grid-cols-2 gap-3 max-w-xl mb-8">
+      <div className="grid grid-cols-2 gap-3 max-w-3xl mb-8">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
@@ -138,8 +138,8 @@ const Progress = () => {
         </div>
       </div>
 
-      {duelStats && (duelStats.wins + duelStats.ties + duelStats.losses > 0) && (
-        <div className="max-w-xl">
+      {duelStats && duelStats.wins + duelStats.ties + duelStats.losses > 0 && (
+        <div className="max-w-3xl">
           <h2 className="text-xl font-semibold mb-4 text-(--text-h) flex items-center gap-2">
             <Swords size={20} className="text-(--accent)" />
             PvP Duel Statistik

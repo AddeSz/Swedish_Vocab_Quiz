@@ -1,4 +1,4 @@
-import { ArrowRight, BookText, PenLine, Shuffle, Sparkles, Swords } from "lucide-react";
+import { ArrowRight, BookText, Shuffle, Sparkles, Swords } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const quizModes = [
@@ -22,30 +22,24 @@ const quizModes = [
   {
     id: "pvp-duel",
     title: "PvP Duel",
-    description: "Utmana en annan spelare i realtid. 10 frågor, bäst av alla vinner!",
+    description:
+      "Utmana en annan spelare i realtid. 10 frågor, bäst av alla vinner!",
     icon: Swords,
     available: true,
     path: "/duel"
-  },
-  {
-    id: "blank",
-    title: "Fyll i luckan",
-    description: "Komplettera meningen med rätt ord i rätt form.",
-    icon: PenLine,
-    available: false
   }
 ];
 
 const Home = () => {
   return (
-    <main className="flex flex-col gap-16 px-6 py-14 animate-in">
+    <main className="flex flex-col gap-16 py-14 animate-in">
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-(--accent)">
           <Sparkles size={14} />
           Svenska
         </div>
         <h1>Ordivo</h1>
-        <p className="text-base leading-relaxed text-(--text) max-w-lg">
+        <p className="text-base leading-relaxed text-(--text) max-w-2xl">
           Träna ditt ordförråd varje dag med quiz och utmaningar.
         </p>
       </section>
@@ -103,7 +97,7 @@ const Home = () => {
         <h2 className="text-xs font-medium tracking-widest uppercase text-(--text) mb-4">
           Om appen
         </h2>
-        <p className="text-sm leading-loose text-(--text) max-w-xl">
+        <p className="text-sm leading-loose text-(--text) max-w-3xl">
           Ordivo är appen för dig som vill stärka ditt svenska ordförråd. Testa
           dina kunskaper med quiz, upptäck nya ord och utmana dig själv på olika
           nivåer. Oavsett om du studerar, förbereder dig inför prov eller bara

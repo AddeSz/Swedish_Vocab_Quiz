@@ -9,7 +9,7 @@ const VerifyEmail = () => {
   if (user) return <Navigate to="/" replace />;
 
   return (
-    <main className="flex justify-center px-6 py-14 animate-in">
+    <main className="flex justify-center py-14 animate-in">
       <div className="w-full max-w-sm flex flex-col gap-4 items-center text-center">
         <Mail size={40} className="text-(--accent)" />
         <h1>Kolla din e-post</h1>

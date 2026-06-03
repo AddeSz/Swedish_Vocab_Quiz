@@ -19,7 +19,7 @@ const modes = [
 
 const QuizPicker = () => {
   return (
-    <main className="flex flex-col gap-10 px-6 py-14 animate-in">
+    <main className="flex flex-col gap-10 py-14 animate-in">
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium tracking-widest uppercase text-(--accent)">
           Välj övning
