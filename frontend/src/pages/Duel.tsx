@@ -70,7 +70,7 @@ export default function Duel() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex-1 flex items-center justify-center ">
         <p className="text-lg text-gray-700 dark:text-gray-300">Laddar...</p>
       </div>
     );
@@ -78,7 +78,7 @@ export default function Duel() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex-1 flex items-center justify-center ">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
             PvP Duell
@@ -88,7 +88,7 @@ export default function Duel() {
           </p>
           <button
             onClick={() => login()}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors cursor-pointer"
           >
             Logga in
           </button>
@@ -98,7 +98,7 @@ export default function Duel() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="flex-1 flex items-center justify-center ">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
           PvP Duell
@@ -110,7 +110,7 @@ export default function Duel() {
 
             <button
               onClick={() => navigate("/")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors cursor-pointer"
             >
               Tillbaka till menyn
             </button>
@@ -127,7 +127,7 @@ export default function Duel() {
 
             <button
               onClick={handleCancel}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors cursor-pointer"
             >
               Avbryt
             </button>

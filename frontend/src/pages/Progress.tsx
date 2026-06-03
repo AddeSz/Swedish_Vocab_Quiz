@@ -60,7 +60,7 @@ const Progress = () => {
   if (!user) {
     return (
       <main className="py-14 flex flex-col gap-4 animate-in">
-        <h1>Dina framsteg</h1>
+        <h1 className="mb-2">Dina framsteg</h1>
         <p className="text-(--text) text-sm">
           Logga in för att se dina framsteg.
         </p>
@@ -106,7 +106,7 @@ const Progress = () => {
 
   return (
     <main className="py-14 animate-in">
-      <h1 className="mb-10">Dina framsteg</h1>
+      <h1 className="mb-2!">Dina framsteg</h1>
 
       <div className="grid grid-cols-2 gap-3 max-w-3xl mb-8">
         {stats.map((s) => {

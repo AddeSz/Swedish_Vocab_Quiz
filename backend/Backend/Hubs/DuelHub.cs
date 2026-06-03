@@ -71,6 +71,18 @@ public class DuelHub : Hub
     _duelManager.DequeueUser(user.Id);
   }
 
+  public async Task LeaveDuel(string duelId)
+  {
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      return;
+
+    var user = await GetCurrentUserAsync();
+
+    await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
+
+    await _duelManager.HandleDisconnect(user.Id);
+  }
+
   public async Task SubmitAnswer(string duelId, int answerIndex)
   {
     if (!Guid.TryParse(duelId, out var parsedDuelId))

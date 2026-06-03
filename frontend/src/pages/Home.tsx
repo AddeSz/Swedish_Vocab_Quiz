@@ -32,7 +32,7 @@ const quizModes = [
 
 const Home = () => {
   return (
-    <main className="flex flex-col gap-16 py-14 animate-in">
+    <main className="flex flex-col gap-16 py-14 animate-in flex-1">
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-(--accent)">
           <Sparkles size={14} />

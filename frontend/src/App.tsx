@@ -19,20 +19,28 @@ const App = () => {
     <BrowserRouter>
       <AuthProvider>
         <NavBar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/quiz" element={<QuizPicker />} />
-          <Route path="/quiz/:mode" element={<Quiz />} />
-          <Route element={<DuelProvider><Outlet /></DuelProvider>}>
-            <Route path="/duel" element={<Duel />} />
-            <Route path="/duel/game" element={<DuelGame />} />
-          </Route>
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/auto-login" element={<AutoLogin />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-        </Routes>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/quiz" element={<QuizPicker />} />
+            <Route path="/quiz/:mode" element={<Quiz />} />
+            <Route
+              element={
+                <DuelProvider>
+                  <Outlet />
+                </DuelProvider>
+              }
+            >
+              <Route path="/duel" element={<Duel />} />
+              <Route path="/duel/game" element={<DuelGame />} />
+            </Route>
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/auto-login" element={<AutoLogin />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+          </Routes>
+        </div>
         <ThemeToggle />
       </AuthProvider>
     </BrowserRouter>

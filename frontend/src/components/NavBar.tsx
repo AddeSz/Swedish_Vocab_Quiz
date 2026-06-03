@@ -43,8 +43,8 @@ const NavBar = () => {
 
   return (
     <header className="sticky top-0 z-10 flex items-center gap-6 px-6 h-14 border-b border-(--border) bg-(--bg)/80 backdrop-blur-md">
-      <Link to="/" className="flex items-center gap-2 no-underline">
-        <span className="text-base font-semibold tracking-widest uppercase text-(--text-h)">
+      <Link to="/" className="flex items-center gap-2 no-underline ">
+        <span className="text-2xl font-semibold tracking-widest uppercase text-(--text-h)">
           Ordivo
         </span>
       </Link>

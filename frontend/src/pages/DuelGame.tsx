@@ -150,9 +150,17 @@ export default function DuelGame() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (!connection || !duelId) return;
+
+      connection.invoke("LeaveDuel", duelId).catch(() => {});
+    };
+  }, [connection, duelId]);
+
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
             Fel
@@ -160,7 +168,7 @@ export default function DuelGame() {
           <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
           <button
             onClick={() => navigate("/duel")}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
           >
             Tillbaka till matchmaking
           </button>
@@ -171,7 +179,7 @@ export default function DuelGame() {
 
   if (reconnecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-700 dark:text-gray-300">
@@ -184,7 +192,7 @@ export default function DuelGame() {
 
   if (phase === "forfeited") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center ">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
             Motståndaren kopplade från
@@ -195,13 +203,13 @@ export default function DuelGame() {
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => navigate("/duel")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
             >
               Spela igen
             </button>
             <button
               onClick={() => navigate("/")}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium"
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium cursor-pointer"
             >
               Tillbaka till menyn
             </button>
@@ -223,7 +231,7 @@ export default function DuelGame() {
         (!isPlayer1 && result.player2Score > result.player1Score));
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+      <div className="flex-1 flex items-center justify-center  p-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-2xl w-full">
           <h1 className="text-4xl font-bold text-center mb-6">
             {isTie ? (
@@ -253,13 +261,13 @@ export default function DuelGame() {
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => navigate("/duel")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
             >
               Spela igen
             </button>
             <button
               onClick={() => navigate("/")}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium"
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium cursor-pointer"
             >
               Tillbaka till menyn
             </button>
@@ -271,7 +279,7 @@ export default function DuelGame() {
 
   if (phase === "review" && review && question) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+      <div className="flex-1 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             <div className="flex justify-between items-center mb-6">
@@ -349,7 +357,7 @@ export default function DuelGame() {
               ) : (
                 <button
                   onClick={handleReady}
-                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-lg"
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-lg cursor-pointer"
                 >
                   Klar
                 </button>
@@ -363,7 +371,7 @@ export default function DuelGame() {
 
   if (phase === "question" && question) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+      <div className="flex-1 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             <div className="flex justify-between items-center mb-6">
@@ -423,7 +431,7 @@ export default function DuelGame() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+    <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <div className="text-center">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
         <p className="text-xl text-gray-700 dark:text-gray-300">Laddar...</p>
