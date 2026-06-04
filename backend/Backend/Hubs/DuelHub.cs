@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Backend.DTOs;
+using Backend.Models;
 using Backend.Services;
 
 namespace Backend.Hubs;
@@ -129,12 +131,74 @@ public class DuelHub : Hub
     await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
     await _duelManager.HandleReconnect(userId, Context.ConnectionId);
 
+    var isPlayer1 = duel.Player1UserId == userId;
+    var myAnswer = isPlayer1 ? duel.Player1Answer : duel.Player2Answer;
+
+    object? questionData = null;
+    object? reviewData = null;
+    object? resultData = null;
+
+    if (duel.Phase == DuelPhase.Question && duel.CurrentQuestionIndex < duel.Questions.Count)
+    {
+      var q = duel.Questions[duel.CurrentQuestionIndex];
+      questionData = new
+      {
+        q.QuestionText,
+        q.Options,
+        QuestionIndex = duel.CurrentQuestionIndex
+      };
+    }
+    else if (duel.Phase == DuelPhase.Review && duel.CurrentQuestionIndex < duel.Questions.Count)
+    {
+      var q = duel.Questions[duel.CurrentQuestionIndex];
+      reviewData = new
+      {
+        q.CorrectAnswerIndex,
+        duel.Player1Answer,
+        duel.Player2Answer,
+        duel.Player1Score,
+        duel.Player2Score,
+        q.QuestionText,
+        q.Options,
+        QuestionIndex = duel.CurrentQuestionIndex
+      };
+    }
+    else if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited)
+    {
+      var breakdown = duel.Questions.Select((q, i) => new QuestionResultDto(
+        i,
+        q.QuestionText,
+        q.CorrectAnswerIndex,
+        i < duel.AnswerHistory.Count ? duel.AnswerHistory[i].Player1Answer : null,
+        i < duel.AnswerHistory.Count ? duel.AnswerHistory[i].Player2Answer : null
+      )).ToList();
+
+      Guid? winnerId = null;
+
+      if (duel.Player1Score > duel.Player2Score)
+      {
+        winnerId = duel.Player1UserId;
+      }
+      else if (duel.Player2Score > duel.Player1Score)
+      {
+        winnerId = duel.Player2UserId;
+      }
+
+      resultData = new DuelResultDto(duel.Player1Score, duel.Player2Score, winnerId, breakdown);
+    }
+
     await Clients.Caller.SendAsync("StateRestored", new
     {
       Phase = duel.Phase.ToString(),
       duel.Player1Score,
       duel.Player2Score,
-      duel.CurrentQuestionIndex
+      duel.CurrentQuestionIndex,
+      duel.Player1UserId,
+      duel.Player2UserId,
+      SubmittedAnswer = myAnswer,
+      Question = questionData,
+      Review = reviewData,
+      Result = resultData
     });
   }
 

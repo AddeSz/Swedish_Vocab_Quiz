@@ -20,7 +20,7 @@ public class DuelQuestionService
       .Include(wf => wf.Definitions)
       .Where(wf => wf.Definitions.Any())
       .OrderBy(_ => EF.Functions.Random())
-      .Take(10)
+      .Take(3)
       .ToList();
 
     var questions = new List<DuelQuestion>();

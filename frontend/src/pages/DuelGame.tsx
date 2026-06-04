@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDuel } from "../context/DuelContext";
 
@@ -34,7 +34,7 @@ interface DuelResult {
 }
 
 interface PersistedDuelState {
-  phase: "completed" | "forfeited";
+  phase: DuelPhase;
   result: DuelResult | null;
 }
 
@@ -91,22 +91,26 @@ export default function DuelGame() {
     }
   }, [phase]);
 
+  const duelSetupDoneRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!duelId) {
       navigate("/duel");
       return;
     }
-    console.log(
-      "[DuelGame] effect ran, persisted:",
-      persisted,
-      "connection:",
-      connection?.state
-    );
 
     if (persisted) {
       console.log("[DuelGame] persisted game found, skipping hub setup");
       return;
     }
+
+    if (duelSetupDoneRef.current === duelId) {
+      console.log("[DuelGame] setup already done for this duel, skipping");
+      return;
+    }
+
+    duelSetupDoneRef.current = duelId;
+    console.log("[DuelGame] running initial setup for duel:", duelId);
 
     let questionHandler: ((data: DuelQuestion) => void) | undefined;
     let reviewHandler: ((data: DuelReview) => void) | undefined;
@@ -115,31 +119,22 @@ export default function DuelGame() {
     let stateRestoredHandler: ((state: any) => void) | undefined;
 
     const setupDuel = async () => {
-      console.log(
-        "[DuelGame] setupDuel called, connection state:",
-        connection?.state
-      );
       try {
-        await connect();
-        console.log(
-          "[DuelGame] connect() done, connection state:",
-          connection?.state
-        );
-
-        if (!connection) {
+        const hub = await connect();
+        if (!hub) {
           console.log(
-            "[DuelGame] connection still null after connect(), aborting"
+            "[DuelGame] connection is null after connect(), aborting"
           );
           return;
         }
 
-        connection.onreconnecting(() => setReconnecting(true));
+        hub.onreconnecting(() => setReconnecting(true));
 
-        connection.onreconnected(async () => {
+        hub.onreconnected(async () => {
           console.log("[DuelGame] onreconnected fired");
           setReconnecting(false);
           try {
-            await connection.invoke("ReconnectToDuel", duelId);
+            await hub.invoke("ReconnectToDuel", duelId);
           } catch (err) {
             console.error("Reconnection failed:", err);
             setError("Failed to reconnect. Returning to menu...");
@@ -154,7 +149,7 @@ export default function DuelGame() {
           setIsReady(false);
           setTimeLeft(10);
         };
-        connection.on("QuestionStarted", questionHandler);
+        hub.on("QuestionStarted", questionHandler);
 
         reviewHandler = (data) => {
           setPhase("review");
@@ -163,30 +158,63 @@ export default function DuelGame() {
           setOpponentScore(isPlayer1 ? data.player2Score : data.player1Score);
           setTimeLeft(5);
         };
-        connection.on("ReviewStarted", reviewHandler);
+        hub.on("ReviewStarted", reviewHandler);
 
         completedHandler = (data) => {
           setPhase("completed");
           setResult(data);
           persistState(duelId, { phase: "completed", result: data });
         };
-        connection.on("DuelCompleted", completedHandler);
+        hub.on("DuelCompleted", completedHandler);
 
         forfeitHandler = () => {
           setPhase("forfeited");
           persistState(duelId, { phase: "forfeited", result: null });
         };
-        connection.on("Forfeit", forfeitHandler);
+        hub.on("Forfeit", forfeitHandler);
 
         stateRestoredHandler = (state) => {
-          setPhase(state.phase.toLowerCase());
+          const newPhase = state.phase.toLowerCase() as DuelPhase;
+          setPhase(newPhase);
           setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
           setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
-        };
-        connection.on("StateRestored", stateRestoredHandler);
 
-        await connection.invoke("JoinDuelGroup", duelId);
-        await connection.invoke("ReadyToPlay", duelId);
+          if (state.question) {
+            setQuestion({
+              questionText: state.question.questionText,
+              options: state.question.options,
+              questionIndex: state.question.questionIndex
+            });
+            setSelectedAnswer(state.submittedAnswer ?? null);
+            setIsReady(false);
+            setTimeLeft(10);
+          }
+
+          if (state.review) {
+            setReview({
+              correctAnswerIndex: state.review.correctAnswerIndex,
+              player1Answer: state.review.player1Answer,
+              player2Answer: state.review.player2Answer,
+              player1Score: state.review.player1Score,
+              player2Score: state.review.player2Score
+            });
+            setQuestion({
+              questionText: state.review.questionText,
+              options: state.review.options,
+              questionIndex: state.review.questionIndex
+            });
+            setTimeLeft(5);
+          }
+
+          if (state.result) {
+            setResult(state.result);
+            persistState(duelId, { phase: newPhase, result: state.result });
+          }
+        };
+        hub.on("StateRestored", stateRestoredHandler);
+
+        await hub.invoke("JoinDuelGroup", duelId);
+        await hub.invoke("ReadyToPlay", duelId);
       } catch (error) {
         console.error("Failed to setup duel:", error);
         navigate("/duel");
@@ -196,17 +224,9 @@ export default function DuelGame() {
     setupDuel();
 
     return () => {
-      if (!connection) return;
-      if (questionHandler) connection.off("QuestionStarted", questionHandler);
-      if (reviewHandler) connection.off("ReviewStarted", reviewHandler);
-      if (completedHandler) connection.off("DuelCompleted", completedHandler);
-      if (forfeitHandler) connection.off("Forfeit", forfeitHandler);
-      if (stateRestoredHandler)
-        connection.off("StateRestored", stateRestoredHandler);
-      connection.onreconnecting(() => {});
-      connection.onreconnected(() => {});
+      duelSetupDoneRef.current = null;
     };
-  }, [duelId, connection, connect]);
+  }, [duelId]);
 
   useEffect(() => {
     if (phase === "question" && timeLeft > 0) {

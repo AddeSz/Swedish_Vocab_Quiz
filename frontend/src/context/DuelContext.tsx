@@ -1,10 +1,16 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState
+} from "react";
 
 interface DuelContextType {
   connection: HubConnection | null;
-  connect: () => Promise<void>;
+  connect: () => Promise<HubConnection | undefined>;
   disconnect: () => Promise<void>;
 }
 
@@ -14,8 +20,11 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const { getAccessTokenSilently } = useAuth0();
 
-  const connect = async () => {
-    if (connection?.state === "Connected") return;
+  const connectionRef = useRef<HubConnection | null>(null);
+
+  const connect = useCallback(async () => {
+    if (connectionRef.current?.state === "Connected")
+      return connectionRef.current;
     const token = await getAccessTokenSilently();
     const hub = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
@@ -24,13 +33,16 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       .withAutomaticReconnect({ nextRetryDelayInMilliseconds: () => 2000 })
       .build();
     await hub.start();
+    connectionRef.current = hub;
     setConnection(hub);
-  };
+    return hub;
+  }, [getAccessTokenSilently]);
 
-  const disconnect = async () => {
-    await connection?.stop();
+  const disconnect = useCallback(async () => {
+    await connectionRef.current?.stop();
+    connectionRef.current = null;
     setConnection(null);
-  };
+  }, []);
 
   return (
     <DuelContext.Provider value={{ connection, connect, disconnect }}>
