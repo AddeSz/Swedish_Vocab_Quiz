@@ -1,6 +1,6 @@
-import { createContext, useContext, useState } from "react";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import { useAuth0 } from "@auth0/auth0-react";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import { createContext, useContext, useState } from "react";
 
 interface DuelContextType {
   connection: HubConnection | null;

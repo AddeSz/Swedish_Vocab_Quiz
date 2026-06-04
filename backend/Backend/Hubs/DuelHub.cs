@@ -128,7 +128,14 @@ public class DuelHub : Hub
 
     await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
     await _duelManager.HandleReconnect(userId, Context.ConnectionId);
-    await Clients.Caller.SendAsync("StateRestored", duel);
+
+    await Clients.Caller.SendAsync("StateRestored", new
+    {
+      Phase = duel.Phase.ToString(),
+      duel.Player1Score,
+      duel.Player2Score,
+      duel.CurrentQuestionIndex
+    });
   }
 
   public override async Task OnDisconnectedAsync(Exception? exception)

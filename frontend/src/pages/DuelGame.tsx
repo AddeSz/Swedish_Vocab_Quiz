@@ -33,6 +33,32 @@ interface DuelResult {
   questionBreakdown: QuestionResult[];
 }
 
+interface PersistedDuelState {
+  phase: "completed" | "forfeited";
+  result: DuelResult | null;
+}
+
+function getPersistedState(duelId: string): PersistedDuelState | null {
+  try {
+    const raw = sessionStorage.getItem(`duel-result-${duelId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistState(duelId: string, state: PersistedDuelState) {
+  try {
+    sessionStorage.setItem(`duel-result-${duelId}`, JSON.stringify(state));
+  } catch {
+    // ignore for now
+  }
+}
+
+function clearPersistedState(duelId: string) {
+  sessionStorage.removeItem(`duel-result-${duelId}`);
+}
+
 export default function DuelGame() {
   const [searchParams] = useSearchParams();
   const duelId = searchParams.get("id");
@@ -40,12 +66,17 @@ export default function DuelGame() {
   const playerNumber = parseInt(searchParams.get("player") ?? "1");
   const isPlayer1 = playerNumber === 1;
   const navigate = useNavigate();
-  const { connection, connect } = useDuel();
+  const { connection, connect, disconnect } = useDuel();
 
-  const [phase, setPhase] = useState<DuelPhase>("question");
+  const persisted = duelId ? getPersistedState(duelId) : null;
+  console.log("[DuelGame] persisted state:", persisted);
+
+  const [phase, setPhase] = useState<DuelPhase>(persisted?.phase ?? "question");
   const [question, setQuestion] = useState<DuelQuestion | null>(null);
   const [review, setReview] = useState<DuelReview | null>(null);
-  const [result, setResult] = useState<DuelResult | null>(null);
+  const [result, setResult] = useState<DuelResult | null>(
+    persisted?.result ?? null
+  );
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(10);
   const [myScore, setMyScore] = useState(0);
@@ -55,18 +86,57 @@ export default function DuelGame() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (phase === "completed" || phase === "forfeited") {
+      disconnect();
+    }
+  }, [phase]);
+
+  useEffect(() => {
     if (!duelId) {
       navigate("/duel");
       return;
     }
+    console.log(
+      "[DuelGame] effect ran, persisted:",
+      persisted,
+      "connection:",
+      connection?.state
+    );
+
+    if (persisted) {
+      console.log("[DuelGame] persisted game found, skipping hub setup");
+      return;
+    }
+
+    let questionHandler: ((data: DuelQuestion) => void) | undefined;
+    let reviewHandler: ((data: DuelReview) => void) | undefined;
+    let completedHandler: ((data: DuelResult) => void) | undefined;
+    let forfeitHandler: (() => void) | undefined;
+    let stateRestoredHandler: ((state: any) => void) | undefined;
 
     const setupDuel = async () => {
+      console.log(
+        "[DuelGame] setupDuel called, connection state:",
+        connection?.state
+      );
       try {
         await connect();
-        if (!connection) return;
+        console.log(
+          "[DuelGame] connect() done, connection state:",
+          connection?.state
+        );
+
+        if (!connection) {
+          console.log(
+            "[DuelGame] connection still null after connect(), aborting"
+          );
+          return;
+        }
 
         connection.onreconnecting(() => setReconnecting(true));
+
         connection.onreconnected(async () => {
+          console.log("[DuelGame] onreconnected fired");
           setReconnecting(false);
           try {
             await connection.invoke("ReconnectToDuel", duelId);
@@ -77,36 +147,43 @@ export default function DuelGame() {
           }
         });
 
-        connection.on("QuestionStarted", (data: DuelQuestion) => {
+        questionHandler = (data) => {
           setPhase("question");
           setQuestion(data);
           setSelectedAnswer(null);
           setIsReady(false);
           setTimeLeft(10);
-        });
+        };
+        connection.on("QuestionStarted", questionHandler);
 
-        connection.on("ReviewStarted", (data: DuelReview) => {
+        reviewHandler = (data) => {
           setPhase("review");
           setReview(data);
           setMyScore(isPlayer1 ? data.player1Score : data.player2Score);
           setOpponentScore(isPlayer1 ? data.player2Score : data.player1Score);
           setTimeLeft(5);
-        });
+        };
+        connection.on("ReviewStarted", reviewHandler);
 
-        connection.on("DuelCompleted", (data: DuelResult) => {
+        completedHandler = (data) => {
           setPhase("completed");
           setResult(data);
-        });
+          persistState(duelId, { phase: "completed", result: data });
+        };
+        connection.on("DuelCompleted", completedHandler);
 
-        connection.on("Forfeit", () => {
+        forfeitHandler = () => {
           setPhase("forfeited");
-        });
+          persistState(duelId, { phase: "forfeited", result: null });
+        };
+        connection.on("Forfeit", forfeitHandler);
 
-        connection.on("StateRestored", (state: any) => {
+        stateRestoredHandler = (state) => {
           setPhase(state.phase.toLowerCase());
           setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
           setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
-        });
+        };
+        connection.on("StateRestored", stateRestoredHandler);
 
         await connection.invoke("JoinDuelGroup", duelId);
         await connection.invoke("ReadyToPlay", duelId);
@@ -117,6 +194,18 @@ export default function DuelGame() {
     };
 
     setupDuel();
+
+    return () => {
+      if (!connection) return;
+      if (questionHandler) connection.off("QuestionStarted", questionHandler);
+      if (reviewHandler) connection.off("ReviewStarted", reviewHandler);
+      if (completedHandler) connection.off("DuelCompleted", completedHandler);
+      if (forfeitHandler) connection.off("Forfeit", forfeitHandler);
+      if (stateRestoredHandler)
+        connection.off("StateRestored", stateRestoredHandler);
+      connection.onreconnecting(() => {});
+      connection.onreconnected(() => {});
+    };
   }, [duelId, connection, connect]);
 
   useEffect(() => {
@@ -128,6 +217,13 @@ export default function DuelGame() {
       return () => clearTimeout(timer);
     }
   }, [timeLeft, phase]);
+
+  useEffect(() => {
+    return () => {
+      if (!connection || !duelId) return;
+      connection.invoke("LeaveDuel", duelId).catch(() => {});
+    };
+  }, [connection, duelId]);
 
   const handleAnswerSelect = async (index: number) => {
     if (phase !== "question" || !connection || !duelId) return;
@@ -150,72 +246,65 @@ export default function DuelGame() {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (!connection || !duelId) return;
-
-      connection.invoke("LeaveDuel", duelId).catch(() => {});
-    };
-  }, [connection, duelId]);
+  const handleLeave = (to: string) => {
+    if (duelId) clearPersistedState(duelId);
+    navigate(to);
+  };
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
+      <main className="flex-1 flex items-center justify-center animate-in">
+        <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-md w-full text-center bg-(--bg-elevated)">
+          <h1 className="text-xl font-semibold text-red-500 dark:text-red-400 mb-4">
             Fel
           </h1>
-          <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
+          <p className="text-(--text) mb-6">{error}</p>
           <button
-            onClick={() => navigate("/duel")}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
+            onClick={() => handleLeave("/duel")}
+            className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
           >
             Tillbaka till matchmaking
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (reconnecting) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <main className="flex-1 flex items-center justify-center animate-in">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-700 dark:text-gray-300">
-            Återansluter...
-          </p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
+          <p className="text-(--text)">Återansluter...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (phase === "forfeited") {
     return (
-      <div className="flex-1 flex items-center justify-center ">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      <main className="flex-1 flex items-center justify-center animate-in">
+        <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-md w-full text-center bg-(--bg-elevated)">
+          <h1 className="text-2xl font-semibold text-(--text-h) mb-4">
             Motståndaren kopplade från
           </h1>
-          <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
-            Du vinner genom walkover!
-          </p>
-          <div className="flex gap-4 justify-center">
+          <p className="text-(--text) mb-6">Du vinner genom walkover!</p>
+          <div className="flex gap-3 justify-center">
             <button
-              onClick={() => navigate("/duel")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
+              onClick={() => handleLeave("/duel")}
+              className="px-5 py-2 text-sm rounded-lg bg-(--accent) hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
             >
               Spela igen
             </button>
             <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium cursor-pointer"
+              onClick={() => handleLeave("/")}
+              className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
             >
               Tillbaka till menyn
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -231,83 +320,79 @@ export default function DuelGame() {
         (!isPlayer1 && result.player2Score > result.player1Score));
 
     return (
-      <div className="flex-1 flex items-center justify-center  p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-2xl w-full">
-          <h1 className="text-4xl font-bold text-center mb-6">
-            {isTie ? (
-              <span className="text-yellow-600">Oavgjort!</span>
-            ) : isWinner ? (
-              <span className="text-green-600">Du vinner!</span>
-            ) : (
-              <span className="text-red-600">Du förlorar</span>
-            )}
+      <main className="flex-1 flex items-center justify-center p-4 animate-in">
+        <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-2xl w-full bg-(--bg-elevated)">
+          <h1 className="text-3xl font-semibold text-center mb-6 text-(--text-h)">
+            {isTie ? "Oavgjort!" : isWinner ? "Du vinner!" : "Du förlorar"}
           </h1>
 
           <div className="flex justify-around mb-8 text-center">
             <div>
-              <p className="text-gray-600 dark:text-gray-400">Du</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-xs tracking-wide text-(--text)">Du</p>
+              <p className="text-3xl font-medium tracking-tight text-(--text-h)">
                 {myFinalScore}
               </p>
             </div>
             <div>
-              <p className="text-gray-600 dark:text-gray-400">{opponentName}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-xs tracking-wide text-(--text)">
+                {opponentName}
+              </p>
+              <p className="text-3xl font-medium tracking-tight text-(--text-h)">
                 {theirFinalScore}
               </p>
             </div>
           </div>
 
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-3 justify-center">
             <button
-              onClick={() => navigate("/duel")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer"
+              onClick={() => handleLeave("/duel")}
+              className="px-5 py-2 text-sm rounded-lg bg-(--accent) hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
             >
               Spela igen
             </button>
             <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium cursor-pointer"
+              onClick={() => handleLeave("/")}
+              className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
             >
               Tillbaka till menyn
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (phase === "review" && review && question) {
     return (
-      <div className="flex-1 p-4">
+      <main className="flex-1 p-4 animate-in">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
             <div className="flex justify-between items-center mb-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Du</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-xs tracking-wide text-(--text)">Du</p>
+                <p className="text-2xl font-medium text-(--text-h)">
                   {myScore}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                <p className="text-sm font-medium text-(--text-h)">
                   Fråga {question.questionIndex + 1}/10
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-(--text)">
                   Granskning ({timeLeft}s)
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs tracking-wide text-(--text)">
                   {opponentName}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-medium text-(--text-h)">
                   {opponentScore}
                 </p>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
               {question.questionText}
             </h2>
 
@@ -323,20 +408,20 @@ export default function DuelGame() {
                 const isMyAnswer = index === myAnswer;
                 const isTheirAnswer = index === theirAnswer;
 
-                let bgColor = "bg-gray-100 dark:bg-gray-700";
+                let bgColor = "bg-(--bg)";
                 if (isCorrect)
                   bgColor =
-                    "bg-green-100 dark:bg-green-900 border-2 border-green-500";
+                    "bg-green-50 dark:bg-green-950 border-2 border-green-500";
                 else if (isMyAnswer || isTheirAnswer)
-                  bgColor = "bg-red-100 dark:bg-red-900";
+                  bgColor = "bg-red-50 dark:bg-red-950";
 
                 return (
-                  <div key={index} className={`p-4 rounded-lg ${bgColor}`}>
-                    <p className="text-gray-900 dark:text-white font-medium">
+                  <div key={index} className={`p-4 rounded-xl ${bgColor}`}>
+                    <p className="text-(--text-h) font-medium text-sm">
                       {option}
                     </p>
                     {(isMyAnswer || isTheirAnswer) && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-(--text) mt-1">
                         {isMyAnswer && isTheirAnswer
                           ? "Båda valde"
                           : isMyAnswer
@@ -351,13 +436,13 @@ export default function DuelGame() {
 
             <div className="text-center">
               {isReady ? (
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-(--text) text-sm">
                   Väntar på motståndare...
                 </p>
               ) : (
                 <button
                   onClick={handleReady}
-                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-lg cursor-pointer"
+                  className="px-6 py-2.5 text-sm rounded-lg bg-(--accent) hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
                 >
                   Klar
                 </button>
@@ -365,41 +450,41 @@ export default function DuelGame() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (phase === "question" && question) {
     return (
-      <div className="flex-1 p-4">
+      <main className="flex-1 p-4 animate-in">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
             <div className="flex justify-between items-center mb-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">You</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-xs tracking-wide text-(--text)">Du</p>
+                <p className="text-2xl font-medium text-(--text-h)">
                   {myScore}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                <p className="text-sm font-medium text-(--text-h)">
                   Fråga {question.questionIndex + 1}/10
                 </p>
-                <p className="text-3xl font-bold text-indigo-600">
+                <p className="text-3xl font-semibold text-(--accent)">
                   {timeLeft}s
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs tracking-wide text-(--text)">
                   {opponentName}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-medium text-(--text-h)">
                   {opponentScore}
                 </p>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
               {question.questionText}
             </h2>
 
@@ -408,10 +493,10 @@ export default function DuelGame() {
                 <button
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
-                  className={`w-full p-4 rounded-lg text-left font-medium transition-colors ${
+                  className={`w-full p-4 rounded-xl text-left font-medium text-sm transition-colors border cursor-pointer ${
                     selectedAnswer === index
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600"
+                      ? "bg-(--accent) text-white border-(--accent)"
+                      : "border-(--border) bg-(--bg) text-(--text-h) hover:border-(--accent-border) hover:bg-(--accent-bg)"
                   }`}
                 >
                   {option}
@@ -420,22 +505,22 @@ export default function DuelGame() {
             </div>
 
             {selectedAnswer !== null && (
-              <p className="text-center text-gray-600 dark:text-gray-400 mt-4">
+              <p className="text-center text-(--text) text-sm mt-4">
                 Svar valt. Du kan fortfarande ändra det.
               </p>
             )}
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+    <main className="flex-1 flex items-center justify-center animate-in">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-        <p className="text-xl text-gray-700 dark:text-gray-300">Laddar...</p>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
+        <p className="text-(--text)">Laddar...</p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -288,6 +288,7 @@ public class DuelManager
   {
     var duel = GetDuel(duelId);
     if (duel == null) return;
+    if (duel.PlayersJoined >= 2) return;
 
     duel.PlayersJoined++;
     if (duel.PlayersJoined == 2)
