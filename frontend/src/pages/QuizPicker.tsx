@@ -18,6 +18,7 @@ const modes = [
 ];
 
 const QuizPicker = () => {
+  console.log("QuizPicker");
   return (
     <main className="flex flex-col gap-10 py-14 animate-in">
       <div className="flex flex-col gap-2">

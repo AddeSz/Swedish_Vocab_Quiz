@@ -30,7 +30,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
         accessTokenFactory: () => token
       })
-      .withAutomaticReconnect({ nextRetryDelayInMilliseconds: () => 2000 })
       .build();
     await hub.start();
     connectionRef.current = hub;

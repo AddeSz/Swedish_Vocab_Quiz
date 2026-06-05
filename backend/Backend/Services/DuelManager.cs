@@ -121,7 +121,6 @@ public class DuelManager
     _userToDuelMap.TryRemove(duel.Player2UserId, out _);
     duel.QuestionTimerCts?.Cancel();
     duel.ReviewTimerCts?.Cancel();
-    duel.DisconnectTimerCts?.Cancel();
     duel.SyncLock.Dispose();
   }
 
@@ -372,17 +371,9 @@ public class DuelManager
     var duel = GetDuelByUserId(userId);
     if (duel == null) return;
 
-    if (duel.Player1UserId == userId) duel.Player1ConnectionId = null;
-    else if (duel.Player2UserId == userId) duel.Player2ConnectionId = null;
+    if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
-    await _hubContext.Clients.Group($"duel-{duel.DuelId}").SendAsync("PlayerDisconnected", new { UserId = userId });
-
-    duel.DisconnectTimerCts = new CancellationTokenSource();
-    var token = duel.DisconnectTimerCts.Token;
-    _ = Task.Delay(TimeSpan.FromSeconds(5), token).ContinueWith(async t =>
-    {
-      if (!t.IsCanceled) await HandleDisconnectTimeout(duel.DuelId, userId);
-    });
+    await HandleDisconnectTimeout(duel.DuelId, userId);
   }
 
   private async Task HandleDisconnectTimeout(Guid duelId, Guid disconnectedUserId)
@@ -413,16 +404,5 @@ public class DuelManager
 
     await _hubContext.Clients.Group($"duel-{duelId}").SendAsync("Forfeit", new { ForfeiterUserId = disconnectedUserId });
     await RemoveDuel(duelId);
-  }
-
-  public async Task HandleReconnect(Guid userId, string connectionId)
-  {
-    var duel = GetDuelByUserId(userId);
-    if (duel == null) return;
-
-    UpdateConnectionId(userId, connectionId);
-    duel.DisconnectTimerCts?.Cancel();
-
-    await _hubContext.Clients.Group($"duel-{duel.DuelId}").SendAsync("PlayerReconnected", new { UserId = userId });
   }
 }

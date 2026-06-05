@@ -31,6 +31,7 @@ const quizModes = [
 ];
 
 const Home = () => {
+  console.log("Home");
   return (
     <main className="flex flex-col gap-16 py-14 animate-in flex-1">
       <section className="flex flex-col gap-4">

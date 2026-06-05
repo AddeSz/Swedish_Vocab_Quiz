@@ -28,31 +28,47 @@ interface DuelStats {
 }
 
 const Progress = () => {
-  const { user, loading: authLoading, login } = useAuth();
+  const { user, loading: authLoading, authResolved, login } = useAuth();
   const [data, setData] = useState<ProgressData | null>(null);
   const [duelStats, setDuelStats] = useState<DuelStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (!authResolved) return;
     if (!user) {
       setLoading(false);
       return;
     }
-    Promise.all([
-      api.progress.get().then((r) => r.json()),
-      api.duel.getStats().then((r) => r.json())
-    ]).then(([progressData, duelData]) => {
-      setData(progressData);
-      setDuelStats(duelData);
-      setLoading(false);
-    });
-  }, [user, authLoading]);
+    Promise.all([api.progress.get(), api.duel.getStats()]).then(
+      async ([progressRes, duelRes]) => {
+        if (!progressRes.ok || !duelRes.ok) {
+          setLoading(false);
+          return;
+        }
+        const [progressData, duelData] = await Promise.all([
+          progressRes.json(),
+          duelRes.json()
+        ]);
+        setData(progressData);
+        setDuelStats(duelData);
+        setLoading(false);
+      }
+    );
+  }, [user, authResolved]);
 
   if (authLoading || loading) {
     return (
-      <main className="py-14">
-        <p className="text-(--text)">Laddar...</p>
+      <main className="py-14 animate-in">
+        <div className="h-8 w-40 rounded-lg bg-(--border) mb-8 animate-pulse" />
+        <div className="grid grid-cols-2 gap-3 max-w-3xl mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 rounded-2xl bg-(--border) animate-pulse"
+            />
+          ))}
+          <div className="col-span-2 h-32 rounded-2xl bg-(--border) animate-pulse" />
+        </div>
       </main>
     );
   }

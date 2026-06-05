@@ -13,6 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  authResolved: boolean;
   login: (screenHint?: string) => void;
   logout: () => void;
   getToken: () => Promise<string>;
@@ -56,8 +57,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const res = await api.auth.getMe();
       if (res.ok) {
         const profile: User = await res.json();
-        setUser(profile);
         localStorage.setItem(CACHE_KEY, JSON.stringify(profile));
+        setUser((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(profile)) return prev;
+          return profile;
+        });
       }
     } catch {
     } finally {
@@ -91,7 +95,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading: !user && (isLoading || !profileResolved),
+        loading: !profileResolved && isLoading,
+        authResolved: profileResolved && !isLoading,
         login,
         logout,
         getToken,

@@ -1,8 +1,10 @@
-import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, Outlet } from "react-router-dom";
+
 import NavBar from "./components/NavBar";
 import ThemeToggle from "./components/ThemeToggle";
 import { AuthProvider } from "./context/AuthContext";
 import { DuelProvider } from "./context/DuelContext";
+
 import AutoLogin from "./pages/AutoLogin";
 import Duel from "./pages/Duel";
 import DuelGame from "./pages/DuelGame";
@@ -14,37 +16,43 @@ import QuizPicker from "./pages/QuizPicker";
 import Settings from "./pages/Settings";
 import VerifyEmail from "./pages/VerifyEmail";
 
-const App = () => {
+function RootLayout() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <NavBar />
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/quiz" element={<QuizPicker />} />
-            <Route path="/quiz/:mode" element={<Quiz />} />
-            <Route
-              element={
-                <DuelProvider>
-                  <Outlet />
-                </DuelProvider>
-              }
-            >
-              <Route path="/duel" element={<Duel />} />
-              <Route path="/duel/game" element={<DuelGame />} />
-            </Route>
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/auto-login" element={<AutoLogin />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-          </Routes>
-        </div>
-        <ThemeToggle />
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <NavBar />
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <Outlet />
+      </div>
+      <ThemeToggle />
+    </AuthProvider>
   );
-};
+}
 
-export default App;
+export const App = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      { path: "/", element: <Home /> },
+      { path: "/quiz", element: <QuizPicker /> },
+      { path: "/quiz/:mode", element: <Quiz /> },
+
+      {
+        element: (
+          <DuelProvider>
+            <Outlet />
+          </DuelProvider>
+        ),
+        children: [
+          { path: "/duel", element: <Duel /> },
+          { path: "/duel/game", element: <DuelGame /> }
+        ]
+      },
+
+      { path: "/progress", element: <Progress /> },
+      { path: "/settings", element: <Settings /> },
+      { path: "/login", element: <Login /> },
+      { path: "/auto-login", element: <AutoLogin /> },
+      { path: "/verify-email", element: <VerifyEmail /> }
+    ]
+  }
+]);

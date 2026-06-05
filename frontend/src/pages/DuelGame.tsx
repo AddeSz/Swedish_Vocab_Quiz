@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { useDuel } from "../context/DuelContext";
 
 type DuelPhase = "question" | "review" | "completed" | "forfeited";
@@ -82,8 +82,29 @@ export default function DuelGame() {
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [isReady, setIsReady] = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isDuelActive = phase === "question" || phase === "review";
+
+  // Warn before browser tab close / refresh
+  useEffect(() => {
+    if (!isDuelActive) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDuelActive]);
+
+  // Warn before React Router navigation (back button, links, etc.)
+  const blocker = useBlocker(isDuelActive);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      setShowLeaveConfirm(true);
+    }
+  }, [blocker.state]);
 
   useEffect(() => {
     if (phase === "completed" || phase === "forfeited") {
@@ -116,7 +137,6 @@ export default function DuelGame() {
     let reviewHandler: ((data: DuelReview) => void) | undefined;
     let completedHandler: ((data: DuelResult) => void) | undefined;
     let forfeitHandler: (() => void) | undefined;
-    let stateRestoredHandler: ((state: any) => void) | undefined;
 
     const setupDuel = async () => {
       try {
@@ -127,20 +147,6 @@ export default function DuelGame() {
           );
           return;
         }
-
-        hub.onreconnecting(() => setReconnecting(true));
-
-        hub.onreconnected(async () => {
-          console.log("[DuelGame] onreconnected fired");
-          setReconnecting(false);
-          try {
-            await hub.invoke("ReconnectToDuel", duelId);
-          } catch (err) {
-            console.error("Reconnection failed:", err);
-            setError("Failed to reconnect. Returning to menu...");
-            setTimeout(() => navigate("/duel"), 3000);
-          }
-        });
 
         questionHandler = (data) => {
           setPhase("question");
@@ -172,46 +178,6 @@ export default function DuelGame() {
           persistState(duelId, { phase: "forfeited", result: null });
         };
         hub.on("Forfeit", forfeitHandler);
-
-        stateRestoredHandler = (state) => {
-          const newPhase = state.phase.toLowerCase() as DuelPhase;
-          setPhase(newPhase);
-          setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
-          setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
-
-          if (state.question) {
-            setQuestion({
-              questionText: state.question.questionText,
-              options: state.question.options,
-              questionIndex: state.question.questionIndex
-            });
-            setSelectedAnswer(state.submittedAnswer ?? null);
-            setIsReady(false);
-            setTimeLeft(10);
-          }
-
-          if (state.review) {
-            setReview({
-              correctAnswerIndex: state.review.correctAnswerIndex,
-              player1Answer: state.review.player1Answer,
-              player2Answer: state.review.player2Answer,
-              player1Score: state.review.player1Score,
-              player2Score: state.review.player2Score
-            });
-            setQuestion({
-              questionText: state.review.questionText,
-              options: state.review.options,
-              questionIndex: state.review.questionIndex
-            });
-            setTimeLeft(5);
-          }
-
-          if (state.result) {
-            setResult(state.result);
-            persistState(duelId, { phase: newPhase, result: state.result });
-          }
-        };
-        hub.on("StateRestored", stateRestoredHandler);
 
         await hub.invoke("JoinDuelGroup", duelId);
         await hub.invoke("ReadyToPlay", duelId);
@@ -271,6 +237,22 @@ export default function DuelGame() {
     navigate(to);
   };
 
+  const handleConfirmLeave = async () => {
+    setShowLeaveConfirm(false);
+    if (duelId && connection) {
+      try {
+        await connection.invoke("LeaveDuel", duelId);
+      } catch {}
+    }
+    if (duelId) clearPersistedState(duelId);
+    blocker.proceed?.();
+  };
+
+  const handleCancelLeave = () => {
+    setShowLeaveConfirm(false);
+    blocker.reset?.();
+  };
+
   if (error) {
     return (
       <main className="flex-1 flex items-center justify-center animate-in">
@@ -285,17 +267,6 @@ export default function DuelGame() {
           >
             Tillbaka till matchmaking
           </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (reconnecting) {
-    return (
-      <main className="flex-1 flex items-center justify-center animate-in">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
-          <p className="text-(--text)">Återansluter...</p>
         </div>
       </main>
     );
@@ -384,163 +355,247 @@ export default function DuelGame() {
 
   if (phase === "review" && review && question) {
     return (
-      <main className="flex-1 p-4 animate-in">
-        <div className="max-w-4xl mx-auto">
-          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
-            <div className="flex justify-between items-center mb-6">
-              <div className="text-center">
-                <p className="text-xs tracking-wide text-(--text)">Du</p>
-                <p className="text-2xl font-medium text-(--text-h)">
-                  {myScore}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-(--text-h)">
-                  Fråga {question.questionIndex + 1}/10
-                </p>
-                <p className="text-xs text-(--text)">
-                  Granskning ({timeLeft}s)
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs tracking-wide text-(--text)">
-                  {opponentName}
-                </p>
-                <p className="text-2xl font-medium text-(--text-h)">
-                  {opponentScore}
-                </p>
-              </div>
-            </div>
-
-            <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
-              {question.questionText}
-            </h2>
-
-            <div className="space-y-3 mb-6">
-              {question.options.map((option, index) => {
-                const isCorrect = index === review.correctAnswerIndex;
-                const myAnswer = isPlayer1
-                  ? review.player1Answer
-                  : review.player2Answer;
-                const theirAnswer = isPlayer1
-                  ? review.player2Answer
-                  : review.player1Answer;
-                const isMyAnswer = index === myAnswer;
-                const isTheirAnswer = index === theirAnswer;
-
-                let bgColor = "bg-(--bg)";
-                if (isCorrect)
-                  bgColor =
-                    "bg-green-50 dark:bg-green-950 border-2 border-green-500";
-                else if (isMyAnswer || isTheirAnswer)
-                  bgColor = "bg-red-50 dark:bg-red-950";
-
-                return (
-                  <div key={index} className={`p-4 rounded-xl ${bgColor}`}>
-                    <p className="text-(--text-h) font-medium text-sm">
-                      {option}
-                    </p>
-                    {(isMyAnswer || isTheirAnswer) && (
-                      <p className="text-xs text-(--text) mt-1">
-                        {isMyAnswer && isTheirAnswer
-                          ? "Båda valde"
-                          : isMyAnswer
-                            ? "Du valde"
-                            : `${opponentName} valde`}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="text-center">
-              {isReady ? (
-                <p className="text-(--text) text-sm">
-                  Väntar på motståndare...
-                </p>
-              ) : (
+      <>
+        {showLeaveConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
+              <h2 className="text-xl font-semibold text-(--text-h) mb-3">
+                Lämna duellen?
+              </h2>
+              <p className="text-(--text) text-sm mb-6">
+                Om du lämnar räknas det som en förlust. Är du säker?
+              </p>
+              <div className="flex gap-3 justify-center">
                 <button
-                  onClick={handleReady}
-                  className="px-6 py-2.5 text-sm rounded-lg bg-(--accent) hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
+                  onClick={handleConfirmLeave}
+                  className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
                 >
-                  Klar
+                  Lämna
                 </button>
-              )}
+                <button
+                  onClick={handleCancelLeave}
+                  className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
+                >
+                  Stanna kvar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        )}
+        <main className="flex-1 p-4 animate-in">
+          <div className="max-w-4xl mx-auto">
+            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
+              <div className="flex justify-between items-center mb-6">
+                <div className="text-center">
+                  <p className="text-xs tracking-wide text-(--text)">Du</p>
+                  <p className="text-2xl font-medium text-(--text-h)">
+                    {myScore}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-(--text-h)">
+                    Fråga {question.questionIndex + 1}/10
+                  </p>
+                  <p className="text-xs text-(--text)">
+                    Granskning ({timeLeft}s)
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs tracking-wide text-(--text)">
+                    {opponentName}
+                  </p>
+                  <p className="text-2xl font-medium text-(--text-h)">
+                    {opponentScore}
+                  </p>
+                </div>
+              </div>
+
+              <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
+                {question.questionText}
+              </h2>
+
+              <div className="space-y-3 mb-6">
+                {question.options.map((option, index) => {
+                  const isCorrect = index === review.correctAnswerIndex;
+                  const myAnswer = isPlayer1
+                    ? review.player1Answer
+                    : review.player2Answer;
+                  const theirAnswer = isPlayer1
+                    ? review.player2Answer
+                    : review.player1Answer;
+                  const isMyAnswer = index === myAnswer;
+                  const isTheirAnswer = index === theirAnswer;
+
+                  let bgColor = "bg-(--bg)";
+                  if (isCorrect)
+                    bgColor =
+                      "bg-green-50 dark:bg-green-950 border-2 border-green-500";
+                  else if (isMyAnswer || isTheirAnswer)
+                    bgColor = "bg-red-50 dark:bg-red-950";
+
+                  return (
+                    <div key={index} className={`p-4 rounded-xl ${bgColor}`}>
+                      <p className="text-(--text-h) font-medium text-sm">
+                        {option}
+                      </p>
+                      {(isMyAnswer || isTheirAnswer) && (
+                        <p className="text-xs text-(--text) mt-1">
+                          {isMyAnswer && isTheirAnswer
+                            ? "Båda valde"
+                            : isMyAnswer
+                              ? "Du valde"
+                              : `${opponentName} valde`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center">
+                {isReady ? (
+                  <p className="text-(--text) text-sm">
+                    Väntar på motståndare...
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleReady}
+                    className="px-6 py-2.5 text-sm rounded-lg bg-(--accent) hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
+                  >
+                    Klar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   if (phase === "question" && question) {
     return (
-      <main className="flex-1 p-4 animate-in">
-        <div className="max-w-4xl mx-auto">
-          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
-            <div className="flex justify-between items-center mb-6">
-              <div className="text-center">
-                <p className="text-xs tracking-wide text-(--text)">Du</p>
-                <p className="text-2xl font-medium text-(--text-h)">
-                  {myScore}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-(--text-h)">
-                  Fråga {question.questionIndex + 1}/10
-                </p>
-                <p className="text-3xl font-semibold text-(--accent)">
-                  {timeLeft}s
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs tracking-wide text-(--text)">
-                  {opponentName}
-                </p>
-                <p className="text-2xl font-medium text-(--text-h)">
-                  {opponentScore}
-                </p>
-              </div>
-            </div>
-
-            <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
-              {question.questionText}
-            </h2>
-
-            <div className="space-y-3">
-              {question.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
-                  className={`w-full p-4 rounded-xl text-left font-medium text-sm transition-colors border cursor-pointer ${
-                    selectedAnswer === index
-                      ? "bg-(--accent) text-white border-(--accent)"
-                      : "border-(--border) bg-(--bg) text-(--text-h) hover:border-(--accent-border) hover:bg-(--accent-bg)"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-
-            {selectedAnswer !== null && (
-              <p className="text-center text-(--text) text-sm mt-4">
-                Svar valt. Du kan fortfarande ändra det.
+      <>
+        {showLeaveConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
+              <h2 className="text-xl font-semibold text-(--text-h) mb-3">
+                Lämna duellen?
+              </h2>
+              <p className="text-(--text) text-sm mb-6">
+                Om du lämnar räknas det som en förlust. Är du säker?
               </p>
-            )}
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={handleConfirmLeave}
+                  className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
+                >
+                  Lämna
+                </button>
+                <button
+                  onClick={handleCancelLeave}
+                  className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
+                >
+                  Stanna kvar
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </main>
+        )}
+        <main className="flex-1 p-4 animate-in">
+          <div className="max-w-4xl mx-auto">
+            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
+              <div className="flex justify-between items-center mb-6">
+                <div className="text-center">
+                  <p className="text-xs tracking-wide text-(--text)">Du</p>
+                  <p className="text-2xl font-medium text-(--text-h)">
+                    {myScore}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-(--text-h)">
+                    Fråga {question.questionIndex + 1}/10
+                  </p>
+                  <p className="text-3xl font-semibold text-(--accent)">
+                    {timeLeft}s
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs tracking-wide text-(--text)">
+                    {opponentName}
+                  </p>
+                  <p className="text-2xl font-medium text-(--text-h)">
+                    {opponentScore}
+                  </p>
+                </div>
+              </div>
+
+              <h2 className="text-xl font-semibold text-(--text-h) mb-6 text-center">
+                {question.questionText}
+              </h2>
+
+              <div className="space-y-3">
+                {question.options.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswerSelect(index)}
+                    className={`w-full p-4 rounded-xl text-left font-medium text-sm transition-colors border cursor-pointer ${
+                      selectedAnswer === index
+                        ? "bg-(--accent) text-white border-(--accent)"
+                        : "border-(--border) bg-(--bg) text-(--text-h) hover:border-(--accent-border) hover:bg-(--accent-bg)"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
+              {selectedAnswer !== null && (
+                <p className="text-center text-(--text) text-sm mt-4">
+                  Svar valt. Du kan fortfarande ändra det.
+                </p>
+              )}
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className="flex-1 flex items-center justify-center animate-in">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
-        <p className="text-(--text)">Laddar...</p>
-      </div>
-    </main>
+    <>
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
+            <h2 className="text-xl font-semibold text-(--text-h) mb-3">
+              Lämna duellen?
+            </h2>
+            <p className="text-(--text) text-sm mb-6">
+              Om du lämnar räknas det som en förlust. Är du säker?
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleConfirmLeave}
+                className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
+              >
+                Lämna
+              </button>
+              <button
+                onClick={handleCancelLeave}
+                className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
+              >
+                Stanna kvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <main className="flex-1 flex items-center justify-center animate-in">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
+          <p className="text-(--text)">Laddar...</p>
+        </div>
+      </main>
+    </>
   );
 }

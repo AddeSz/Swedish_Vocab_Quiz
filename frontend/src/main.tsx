@@ -1,6 +1,7 @@
 import { Auth0Provider } from "@auth0/auth0-react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
+import { RouterProvider } from "react-router-dom";
+import { App } from "./App";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -12,6 +13,6 @@ createRoot(document.getElementById("root")!).render(
       audience: import.meta.env.VITE_AUTH0_AUDIENCE
     }}
   >
-    <App />
+    <RouterProvider router={App} />
   </Auth0Provider>
 );

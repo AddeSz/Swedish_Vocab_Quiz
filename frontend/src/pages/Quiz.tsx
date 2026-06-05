@@ -43,6 +43,7 @@ const modeConfig = {
 };
 
 const Quiz = () => {
+  console.log("Quiz");
   const { mode } = useParams<{ mode: string }>();
   const navigate = useNavigate();
   const config = modeConfig[mode as keyof typeof modeConfig];
