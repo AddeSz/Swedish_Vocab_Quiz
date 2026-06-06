@@ -368,6 +368,7 @@ public class DuelManager
 
   public async Task HandleDisconnect(Guid userId)
   {
+    DequeueUser(userId);
     var duel = GetDuelByUserId(userId);
     if (duel == null) return;
 
