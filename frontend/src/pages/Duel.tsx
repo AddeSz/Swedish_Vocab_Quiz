@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import type { HubConnection } from "@microsoft/signalr";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDuel } from "../context/DuelContext";
@@ -8,12 +9,13 @@ export default function Duel() {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { connection, connect } = useDuel();
+  const { connect, disconnect } = useDuel();
   const { user, loading: authLoading, login } = useAuth();
+  const hubRef = useRef<HubConnection | null>(null);
+  const matchedRef = useRef(false);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) return;
+    if (authLoading || !user) return;
 
     let matchFoundHandler:
       | ((data: {
@@ -25,12 +27,11 @@ export default function Duel() {
 
     const setupMatchmaking = async () => {
       try {
-        await connect();
-
-        if (!connection) return;
+        const hub = await connect();
+        hubRef.current = hub;
 
         matchFoundHandler = (data) => {
-          console.log("MatchFound data:", data);
+          matchedRef.current = true;
           navigate(
             `/duel/game?id=${data.duelId}&opponent=${encodeURIComponent(
               data.opponentName
@@ -38,14 +39,15 @@ export default function Duel() {
           );
         };
 
-        connection.on("MatchFound", matchFoundHandler);
-
-        connection.onclose(() => {
-          setSearching(false);
-          setError("Connection lost. Please try again.");
+        hub.on("MatchFound", matchFoundHandler);
+        hub.onclose(() => {
+          if (!matchedRef.current) {
+            setSearching(false);
+            setError("Connection lost. Please try again.");
+          }
         });
 
-        await connection.invoke("JoinMatchmaking");
+        await hub.invoke("JoinMatchmaking");
         setSearching(true);
       } catch (err) {
         console.error("Failed to connect to hub:", err);
@@ -58,19 +60,17 @@ export default function Duel() {
     setupMatchmaking();
 
     return () => {
-      if (connection && matchFoundHandler) {
-        connection.off("MatchFound", matchFoundHandler);
-      }
-      connection?.invoke("LeaveMatchmaking").catch(console.error);
+      if (matchFoundHandler)
+        hubRef.current?.off("MatchFound", matchFoundHandler);
+      const cleanup = async () => {
+        await hubRef.current?.invoke("LeaveMatchmaking").catch(console.error);
+        if (!matchedRef.current) await disconnect();
+      };
+      cleanup();
     };
-  }, [connection, connect, authLoading, user]);
+  }, [authLoading, user]);
 
   const handleCancel = async () => {
-    try {
-      await connection?.invoke("LeaveMatchmaking");
-    } catch (err) {
-      console.error("Failed to leave matchmaking:", err);
-    }
     navigate("/");
   };
 

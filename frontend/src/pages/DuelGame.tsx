@@ -1,3 +1,4 @@
+import type { HubConnection } from "@microsoft/signalr";
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { useDuel } from "../context/DuelContext";
@@ -66,7 +67,9 @@ export default function DuelGame() {
   const playerNumber = parseInt(searchParams.get("player") ?? "1");
   const isPlayer1 = playerNumber === 1;
   const navigate = useNavigate();
-  const { connection, connect, disconnect } = useDuel();
+  const { connect, disconnect } = useDuel();
+  const hubRef = useRef<HubConnection | null>(null);
+  const duelSetupDoneRef = useRef<string | null>(null);
 
   const persisted = duelId ? getPersistedState(duelId) : null;
 
@@ -111,20 +114,14 @@ export default function DuelGame() {
     }
   }, [phase]);
 
-  const duelSetupDoneRef = useRef<string | null>(null);
-
   useEffect(() => {
     if (!duelId) {
       navigate("/duel");
       return;
     }
-
     if (persisted) return;
-
     if (duelSetupDoneRef.current === duelId) return;
-
     duelSetupDoneRef.current = duelId;
-    console.log("[DuelGame] running initial setup for duel:", duelId);
 
     let questionHandler: ((data: DuelQuestion) => void) | undefined;
     let reviewHandler: ((data: DuelReview) => void) | undefined;
@@ -134,12 +131,7 @@ export default function DuelGame() {
     const setupDuel = async () => {
       try {
         const hub = await connect();
-        if (!hub) {
-          console.log(
-            "[DuelGame] connection is null after connect(), aborting"
-          );
-          return;
-        }
+        hubRef.current = hub;
 
         questionHandler = (data) => {
           setPhase("question");
@@ -199,26 +191,26 @@ export default function DuelGame() {
 
   useEffect(() => {
     return () => {
-      if (!connection || !duelId) return;
-      connection.invoke("LeaveDuel", duelId).catch(() => {});
+      if (!duelId) return;
+      hubRef.current?.invoke("LeaveDuel", duelId).catch(() => {});
     };
-  }, [connection, duelId]);
+  }, [duelId]);
 
   const handleAnswerSelect = async (index: number) => {
-    if (phase !== "question" || !connection || !duelId) return;
+    if (phase !== "question" || !duelId) return;
     setSelectedAnswer(index);
     try {
-      await connection.invoke("SubmitAnswer", duelId, index);
+      await hubRef.current?.invoke("SubmitAnswer", duelId, index);
     } catch (err) {
       console.error("Failed to submit answer:", err);
     }
   };
 
   const handleReady = async () => {
-    if (!connection || !duelId || isReady) return;
+    if (!duelId || isReady) return;
     setIsReady(true);
     try {
-      await connection.invoke("ReadyForNext", duelId);
+      await hubRef.current?.invoke("ReadyForNext", duelId);
     } catch (err) {
       console.error("Failed to mark ready:", err);
       setIsReady(false);
@@ -232,9 +224,9 @@ export default function DuelGame() {
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
-    if (duelId && connection) {
+    if (duelId) {
       try {
-        await connection.invoke("LeaveDuel", duelId);
+        await hubRef.current?.invoke("LeaveDuel", duelId);
       } catch {}
     }
     if (duelId) clearPersistedState(duelId);
