@@ -25,5 +25,5 @@ public class DuelState
   public CancellationTokenSource? QuestionTimerCts { get; set; }
   public CancellationTokenSource? ReviewTimerCts { get; set; }
   public CancellationTokenSource? DisconnectTimerCts { get; set; }
-  public int PlayersJoined { get; set; } = 0;
+  public int PlayersJoined = 0;
 }

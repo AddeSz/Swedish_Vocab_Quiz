@@ -69,7 +69,6 @@ export default function DuelGame() {
   const { connection, connect, disconnect } = useDuel();
 
   const persisted = duelId ? getPersistedState(duelId) : null;
-  console.log("[DuelGame] persisted state:", persisted);
 
   const [phase, setPhase] = useState<DuelPhase>(persisted?.phase ?? "question");
   const [question, setQuestion] = useState<DuelQuestion | null>(null);
@@ -120,15 +119,9 @@ export default function DuelGame() {
       return;
     }
 
-    if (persisted) {
-      console.log("[DuelGame] persisted game found, skipping hub setup");
-      return;
-    }
+    if (persisted) return;
 
-    if (duelSetupDoneRef.current === duelId) {
-      console.log("[DuelGame] setup already done for this duel, skipping");
-      return;
-    }
+    if (duelSetupDoneRef.current === duelId) return;
 
     duelSetupDoneRef.current = duelId;
     console.log("[DuelGame] running initial setup for duel:", duelId);

@@ -287,11 +287,9 @@ public class DuelManager
   {
     var duel = GetDuel(duelId);
     if (duel == null) return;
-    if (duel.PlayersJoined >= 2) return;
 
-    duel.PlayersJoined++;
-    if (duel.PlayersJoined == 2)
-      await StartQuestion(duelId);
+    var count = Interlocked.Increment(ref duel.PlayersJoined);
+    if (count == 2) await StartQuestion(duelId);
   }
 
   private async Task AdvanceToNextQuestion(Guid duelId)
