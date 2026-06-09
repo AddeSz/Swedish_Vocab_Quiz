@@ -123,4 +123,17 @@ public class DuelHub : Hub
     await _duelManager.HandleDisconnect(user.Id);
     await base.OnDisconnectedAsync(exception);
   }
+
+  public async Task<object?> RejoinDuel(string duelId)
+  {
+    if (!Guid.TryParse(duelId, out var parsedDuelId))
+      throw new HubException("Invalid duel ID");
+
+    var user = await GetCurrentUserAsync();
+
+    await Groups.AddToGroupAsync(Context.ConnectionId, $"duel-{parsedDuelId}");
+    _duelManager.UpdateConnectionId(user.Id, Context.ConnectionId);
+
+    return await _duelManager.RejoinDuel(parsedDuelId, user.Id, Context.ConnectionId);
+  }
 }

@@ -379,11 +379,23 @@ public class DuelManager
     if (duel.Phase == DuelPhase.PreGame)
     {
       await HandlePreGameDisconnect(duel.DuelId);
+      return;
     }
-    else
+
+    var isPlayer1 = duel.Player1UserId == userId;
+    if (isPlayer1) duel.Player1Disconnected = true;
+    else duel.Player2Disconnected = true;
+
+    await _hubContext.Clients.Group($"duel-{duel.DuelId}").SendAsync("OpponentDisconnected", new { TimeoutSeconds = 5 });
+
+    var cts = new CancellationTokenSource();
+    if (isPlayer1) duel.Player1ReconnectCts = cts;
+    else duel.Player2ReconnectCts = cts;
+
+    _ = Task.Delay(TimeSpan.FromSeconds(5), cts.Token).ContinueWith(async t =>
     {
-      await HandleDisconnectTimeout(duel.DuelId, userId);
-    }
+      if (!t.IsCanceled) await HandleDisconnectTimeout(duel.DuelId, userId);
+    });
   }
 
 
@@ -402,6 +414,7 @@ public class DuelManager
   {
     var duel = GetDuel(duelId);
     if (duel == null) return;
+    if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
     duel.Phase = DuelPhase.Forfeited;
 
@@ -426,5 +439,61 @@ public class DuelManager
 
     await _hubContext.Clients.Group($"duel-{duelId}").SendAsync("Forfeit", new { ForfeiterUserId = disconnectedUserId });
     await RemoveDuel(duelId);
+  }
+
+  public async Task<object?> RejoinDuel(Guid duelId, Guid userId, string connectionId)
+  {
+    var duel = GetDuel(duelId);
+    if (duel == null) return null;
+    if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return null;
+
+    var isPlayer1 = duel.Player1UserId == userId;
+    if (!isPlayer1 && duel.Player2UserId != userId) return null;
+
+    if (isPlayer1)
+    {
+      duel.Player1ReconnectCts?.Cancel();
+      duel.Player1Disconnected = false;
+      duel.Player1ConnectionId = connectionId;
+    }
+    else
+    {
+      duel.Player2ReconnectCts?.Cancel();
+      duel.Player2Disconnected = false;
+      duel.Player2ConnectionId = connectionId;
+    }
+
+    await _hubContext.Clients.Group($"duel-{duelId}").SendAsync("OpponentReconnected");
+
+    var question = duel.Questions[duel.CurrentQuestionIndex];
+
+    object? phaseData = duel.Phase switch
+    {
+      DuelPhase.Question => new
+      {
+        question.QuestionText,
+        question.Options,
+        QuestionIndex = duel.CurrentQuestionIndex,
+        TimeLeftSeconds = Math.Max(0, 10 - (int)(DateTime.UtcNow - duel.QuestionStartedAtUtc!.Value).TotalSeconds)
+      },
+      DuelPhase.Review => new
+      {
+        question.CorrectAnswerIndex,
+        duel.Player1Answer,
+        duel.Player2Answer,
+        duel.Player1Score,
+        duel.Player2Score,
+        TimeLeftSeconds = Math.Max(0, 5 - (int)(DateTime.UtcNow - duel.ReviewStartedAtUtc!.Value).TotalSeconds)
+      },
+      _ => null
+    };
+
+    return new
+    {
+      Phase = duel.Phase.ToString(),
+      duel.Player1Score,
+      duel.Player2Score,
+      PhaseData = phaseData
+    };
   }
 }

@@ -24,6 +24,7 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
         accessTokenFactory: () => getAccessTokenSilently()
       })
+      .withAutomaticReconnect([0, 2, 5])
       .build();
 
     await hub.start();

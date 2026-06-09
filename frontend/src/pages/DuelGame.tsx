@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { useDuel } from "../context/DuelContext";
 
-type DuelPhase = "question" | "review" | "completed" | "forfeited";
+type DuelPhase = "pregame" | "question" | "review" | "completed" | "forfeited";
 
 interface DuelQuestion {
   questionText: string;
@@ -39,6 +39,13 @@ interface PersistedDuelState {
   result: DuelResult | null;
 }
 
+interface RejoinState {
+  phase: string;
+  player1Score: number;
+  player2Score: number;
+  phaseData: any;
+}
+
 function getPersistedState(duelId: string): PersistedDuelState | null {
   try {
     const raw = sessionStorage.getItem(`duel-result-${duelId}`);
@@ -51,9 +58,7 @@ function getPersistedState(duelId: string): PersistedDuelState | null {
 function persistState(duelId: string, state: PersistedDuelState) {
   try {
     sessionStorage.setItem(`duel-result-${duelId}`, JSON.stringify(state));
-  } catch {
-    // ignore for now
-  }
+  } catch {}
 }
 
 function clearPersistedState(duelId: string) {
@@ -74,6 +79,7 @@ export default function DuelGame() {
   const persisted = duelId ? getPersistedState(duelId) : null;
 
   const [phase, setPhase] = useState<DuelPhase>(persisted?.phase ?? "question");
+  const phaseRef = useRef<DuelPhase>(phase);
   const [question, setQuestion] = useState<DuelQuestion | null>(null);
   const [review, setReview] = useState<DuelReview | null>(null);
   const [result, setResult] = useState<DuelResult | null>(
@@ -85,10 +91,13 @@ export default function DuelGame() {
   const [opponentScore, setOpponentScore] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [opponentDisconnectSecondsLeft, setOpponentDisconnectSecondsLeft] =
+    useState(5);
 
   const isDuelActive = phase === "question" || phase === "review";
 
-  // Warn before browser tab close / refresh
   useEffect(() => {
     if (!isDuelActive) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -98,7 +107,6 @@ export default function DuelGame() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDuelActive]);
 
-  // Warn before React Router navigation (back button, links, etc.)
   const blocker = useBlocker(isDuelActive);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
@@ -109,6 +117,7 @@ export default function DuelGame() {
   }, [blocker.state]);
 
   useEffect(() => {
+    phaseRef.current = phase;
     if (phase === "completed" || phase === "forfeited") {
       disconnect();
     }
@@ -127,6 +136,10 @@ export default function DuelGame() {
     let reviewHandler: ((data: DuelReview) => void) | undefined;
     let completedHandler: ((data: DuelResult) => void) | undefined;
     let forfeitHandler: (() => void) | undefined;
+    let opponentDisconnectedHandler:
+      | ((data: { timeoutSeconds: number }) => void)
+      | undefined;
+    let opponentReconnectedHandler: (() => void) | undefined;
 
     const setupDuel = async () => {
       try {
@@ -164,11 +177,77 @@ export default function DuelGame() {
         };
         hub.on("Forfeit", forfeitHandler);
 
+        opponentDisconnectedHandler = (data) => {
+          setOpponentDisconnected(true);
+          setOpponentDisconnectSecondsLeft(data.timeoutSeconds);
+        };
+        hub.on("OpponentDisconnected", opponentDisconnectedHandler);
+
+        opponentReconnectedHandler = () => {
+          setOpponentDisconnected(false);
+        };
+        hub.on("OpponentReconnected", opponentReconnectedHandler);
+
+        hub.onreconnecting(() => {
+          setReconnecting(true);
+        });
+
+        hub.onreconnected(async () => {
+          setReconnecting(false);
+          try {
+            await hub.invoke("JoinDuelGroup", duelId);
+            const state = await hub.invoke<RejoinState>("RejoinDuel", duelId);
+
+            if (!state) {
+              navigate("/duel");
+              return;
+            }
+
+            setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
+            setOpponentScore(
+              isPlayer1 ? state.player2Score : state.player1Score
+            );
+
+            if (state.phase === "Question") {
+              setQuestion({
+                questionText: state.phaseData.questionText,
+                options: state.phaseData.options,
+                questionIndex: state.phaseData.questionIndex
+              });
+              setTimeLeft(state.phaseData.timeLeftSeconds);
+              setSelectedAnswer(null);
+              setPhase("question");
+            } else if (state.phase === "Review") {
+              setReview({
+                correctAnswerIndex: state.phaseData.correctAnswerIndex,
+                player1Answer: state.phaseData.player1Answer,
+                player2Answer: state.phaseData.player2Answer,
+                player1Score: state.phaseData.player1Score,
+                player2Score: state.phaseData.player2Score
+              });
+              setTimeLeft(state.phaseData.timeLeftSeconds);
+              setPhase("review");
+            }
+          } catch (err) {
+            console.error("Failed to rejoin duel:", err);
+            navigate("/duel");
+          }
+        });
+
+        hub.onclose(() => {
+          if (
+            phaseRef.current === "completed" ||
+            phaseRef.current === "forfeited"
+          )
+            return;
+          navigate("/");
+        });
+
         await hub.invoke("JoinDuelGroup", duelId);
         await hub.invoke("ReadyToPlay", duelId);
       } catch (error) {
         console.error("Failed to setup duel:", error);
-        navigate("/duel");
+        navigate("/");
       }
     };
 
@@ -188,6 +267,16 @@ export default function DuelGame() {
       return () => clearTimeout(timer);
     }
   }, [timeLeft, phase]);
+
+  useEffect(() => {
+    if (!opponentDisconnected) return;
+    if (opponentDisconnectSecondsLeft <= 0) return;
+    const timer = setTimeout(
+      () => setOpponentDisconnectSecondsLeft((s) => s - 1),
+      1000
+    );
+    return () => clearTimeout(timer);
+  }, [opponentDisconnected, opponentDisconnectSecondsLeft]);
 
   useEffect(() => {
     return () => {
@@ -237,6 +326,58 @@ export default function DuelGame() {
     setShowLeaveConfirm(false);
     blocker.reset?.();
   };
+
+  const leaveConfirmOverlay = showLeaveConfirm && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
+        <h2 className="text-xl font-semibold text-(--text-h) mb-3">
+          Lämna duellen?
+        </h2>
+        <p className="text-(--text) text-sm mb-6">
+          Om du lämnar räknas det som en förlust. Är du säker?
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleConfirmLeave}
+            className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
+          >
+            Lämna
+          </button>
+          <button
+            onClick={handleCancelLeave}
+            className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
+          >
+            Stanna kvar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const reconnectingOverlay = reconnecting && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-(--accent) mx-auto mb-4"></div>
+        <h2 className="text-lg font-semibold text-(--text-h) mb-2">
+          Återansluter...
+        </h2>
+        <p className="text-sm text-(--text)">
+          Försöker återansluta till duellen.
+        </p>
+      </div>
+    </div>
+  );
+
+  const opponentDisconnectedBanner = opponentDisconnected && (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-xl border border-(--border) bg-(--bg-elevated) shadow-(--shadow) text-center">
+      <p className="text-sm font-medium text-(--text-h)">
+        Motståndaren kopplade från
+      </p>
+      <p className="text-xs text-(--text) mt-0.5">
+        Spelet avslutas om {opponentDisconnectSecondsLeft}s
+      </p>
+    </div>
+  );
 
   if (error) {
     return (
@@ -301,7 +442,6 @@ export default function DuelGame() {
           <h1 className="text-3xl font-semibold text-center mb-6 text-(--text-h)">
             {isTie ? "Oavgjort!" : isWinner ? "Du vinner!" : "Du förlorar"}
           </h1>
-
           <div className="flex justify-around mb-8 text-center">
             <div>
               <p className="text-xs tracking-wide text-(--text)">Du</p>
@@ -318,7 +458,6 @@ export default function DuelGame() {
               </p>
             </div>
           </div>
-
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => handleLeave("/duel")}
@@ -341,32 +480,9 @@ export default function DuelGame() {
   if (phase === "review" && review && question) {
     return (
       <>
-        {showLeaveConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
-              <h2 className="text-xl font-semibold text-(--text-h) mb-3">
-                Lämna duellen?
-              </h2>
-              <p className="text-(--text) text-sm mb-6">
-                Om du lämnar räknas det som en förlust. Är du säker?
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={handleConfirmLeave}
-                  className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
-                >
-                  Lämna
-                </button>
-                <button
-                  onClick={handleCancelLeave}
-                  className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
-                >
-                  Stanna kvar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {leaveConfirmOverlay}
+        {reconnectingOverlay}
+        {opponentDisconnectedBanner}
         <main className="flex-1 p-4 animate-in">
           <div className="max-w-4xl mx-auto">
             <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
@@ -461,32 +577,9 @@ export default function DuelGame() {
   if (phase === "question" && question) {
     return (
       <>
-        {showLeaveConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
-              <h2 className="text-xl font-semibold text-(--text-h) mb-3">
-                Lämna duellen?
-              </h2>
-              <p className="text-(--text) text-sm mb-6">
-                Om du lämnar räknas det som en förlust. Är du säker?
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={handleConfirmLeave}
-                  className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
-                >
-                  Lämna
-                </button>
-                <button
-                  onClick={handleCancelLeave}
-                  className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
-                >
-                  Stanna kvar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {leaveConfirmOverlay}
+        {reconnectingOverlay}
+        {opponentDisconnectedBanner}
         <main className="flex-1 p-4 animate-in">
           <div className="max-w-4xl mx-auto">
             <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 bg-(--bg-elevated)">
@@ -549,32 +642,8 @@ export default function DuelGame() {
 
   return (
     <>
-      {showLeaveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-sm w-full text-center bg-(--bg-elevated) mx-4">
-            <h2 className="text-xl font-semibold text-(--text-h) mb-3">
-              Lämna duellen?
-            </h2>
-            <p className="text-(--text) text-sm mb-6">
-              Om du lämnar räknas det som en förlust. Är du säker?
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={handleConfirmLeave}
-                className="px-5 py-2 text-sm rounded-lg bg-red-500 hover:opacity-90 text-white font-medium transition-opacity cursor-pointer border-none"
-              >
-                Lämna
-              </button>
-              <button
-                onClick={handleCancelLeave}
-                className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
-              >
-                Stanna kvar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {leaveConfirmOverlay}
+      {reconnectingOverlay}
       <main className="flex-1 flex items-center justify-center animate-in">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto mb-4"></div>
