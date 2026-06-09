@@ -2,7 +2,7 @@ namespace Backend.Models;
 
 public enum DuelPhase
 {
-  Matchmaking,
+  PreGame,
   Question,
   Review,
   Completed,

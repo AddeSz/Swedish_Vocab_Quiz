@@ -4,9 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useDuel } from "../context/DuelContext";
 
+interface MatchData {
+  duelId: string;
+  opponentName: string;
+  playerNumber: number;
+}
+
 export default function Duel() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matchData, setMatchData] = useState<MatchData | null>(null);
+  const [countdown, setCountdown] = useState(3);
 
   const navigate = useNavigate();
   const { connect, disconnect } = useDuel();
@@ -17,13 +25,8 @@ export default function Duel() {
   useEffect(() => {
     if (authLoading || !user) return;
 
-    let matchFoundHandler:
-      | ((data: {
-          duelId: string;
-          opponentName: string;
-          playerNumber: number;
-        }) => void)
-      | undefined;
+    let matchFoundHandler: ((data: MatchData) => void) | undefined;
+    let matchCancelledHandler: (() => void) | undefined;
 
     const setupMatchmaking = async () => {
       try {
@@ -31,15 +34,21 @@ export default function Duel() {
         hubRef.current = hub;
 
         matchFoundHandler = (data) => {
-          matchedRef.current = true;
-          navigate(
-            `/duel/game?id=${data.duelId}&opponent=${encodeURIComponent(
-              data.opponentName
-            )}&player=${data.playerNumber}`
-          );
+          setMatchData(data);
+          setCountdown(3);
+        };
+
+        matchCancelledHandler = () => {
+          setMatchData(null);
+          setCountdown(3);
+          matchedRef.current = false;
+          setSearching(true);
+          hubRef.current?.invoke("JoinMatchmaking").catch(console.error);
         };
 
         hub.on("MatchFound", matchFoundHandler);
+        hub.on("MatchCancelled", matchCancelledHandler);
+
         hub.onclose(() => {
           if (!matchedRef.current) {
             setSearching(false);
@@ -62,6 +71,8 @@ export default function Duel() {
     return () => {
       if (matchFoundHandler)
         hubRef.current?.off("MatchFound", matchFoundHandler);
+      if (matchCancelledHandler)
+        hubRef.current?.off("MatchCancelled", matchCancelledHandler);
       const cleanup = async () => {
         await hubRef.current?.invoke("LeaveMatchmaking").catch(console.error);
         if (!matchedRef.current) await disconnect();
@@ -69,6 +80,22 @@ export default function Duel() {
       cleanup();
     };
   }, [authLoading, user]);
+
+  useEffect(() => {
+    if (!matchData) return;
+    if (countdown <= 0) {
+      if (hubRef.current?.state !== "Connected") return;
+      matchedRef.current = true;
+      navigate(
+        `/duel/game?id=${matchData.duelId}&opponent=${encodeURIComponent(
+          matchData.opponentName
+        )}&player=${matchData.playerNumber}`
+      );
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [matchData, countdown]);
 
   const handleCancel = async () => {
     navigate("/");
@@ -101,6 +128,40 @@ export default function Duel() {
     );
   }
 
+  if (matchData) {
+    const initials = matchData.opponentName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    return (
+      <main className="flex-1 flex items-center justify-center animate-in">
+        <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-10 max-w-md w-full text-center bg-(--bg-elevated)">
+          <h1 className="text-2xl font-semibold text-(--text-h) mb-8">
+            Motståndare hittad!
+          </h1>
+
+          <div className="w-24 h-24 rounded-full bg-(--accent-bg) border-2 border-(--accent) flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl font-semibold text-(--accent)">
+              {initials}
+            </span>
+          </div>
+
+          <p className="text-xl font-semibold text-(--text-h) mb-10">
+            {matchData.opponentName}
+          </p>
+
+          <p className="text-sm text-(--text) mb-2">Startar om</p>
+          <p className="text-6xl font-bold text-(--accent) mb-10">
+            {countdown}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1 flex items-center justify-center animate-in">
       <div className="border border-(--border) rounded-2xl shadow-(--shadow) p-8 max-w-md w-full text-center bg-(--bg-elevated)">
@@ -113,7 +174,6 @@ export default function Duel() {
             <p className="text-sm text-red-500 dark:text-red-400 mb-6">
               {error}
             </p>
-
             <button
               onClick={() => navigate("/")}
               className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"
@@ -123,12 +183,10 @@ export default function Duel() {
           </>
         ) : searching ? (
           <>
-            <div className="mb-6">
+            <div className="mb-2 mt-2">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-(--accent) mx-auto"></div>
             </div>
-
             <p className="text-(--text) mb-8">Söker motståndare...</p>
-
             <button
               onClick={handleCancel}
               className="px-5 py-2 text-sm rounded-lg border border-(--border) text-(--text) hover:text-(--text-h) hover:bg-(--accent-bg) transition-colors cursor-pointer bg-transparent"

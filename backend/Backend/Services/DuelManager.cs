@@ -75,7 +75,7 @@ public class DuelManager
       Player2UserId = player2Id,
       Player2Name = player2.DisplayName,
       Player2ConnectionId = _pendingConnections.GetValueOrDefault(player2Id),
-      Phase = DuelPhase.Question,
+      Phase = DuelPhase.PreGame,
       Questions = questions,
       CurrentQuestionIndex = 0
     };
@@ -289,7 +289,11 @@ public class DuelManager
     if (duel == null) return;
 
     var count = Interlocked.Increment(ref duel.PlayersJoined);
-    if (count == 2) await StartQuestion(duelId);
+    if (count == 2)
+    {
+      duel.Phase = DuelPhase.Question;
+      await StartQuestion(duelId);
+    }
   }
 
   private async Task AdvanceToNextQuestion(Guid duelId)
@@ -372,7 +376,26 @@ public class DuelManager
 
     if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
 
-    await HandleDisconnectTimeout(duel.DuelId, userId);
+    if (duel.Phase == DuelPhase.PreGame)
+    {
+      await HandlePreGameDisconnect(duel.DuelId);
+    }
+    else
+    {
+      await HandleDisconnectTimeout(duel.DuelId, userId);
+    }
+  }
+
+
+  private async Task HandlePreGameDisconnect(Guid duelId)
+  {
+    var duel = GetDuel(duelId);
+    if (duel == null) return;
+
+    duel.Phase = DuelPhase.Forfeited;
+
+    await _hubContext.Clients.Group($"duel-{duelId}").SendAsync("MatchCancelled");
+    await RemoveDuel(duelId);
   }
 
   private async Task HandleDisconnectTimeout(Guid duelId, Guid disconnectedUserId)

@@ -14,8 +14,11 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
   const connectionRef = useRef<HubConnection | null>(null);
 
   const connect = useCallback(async (): Promise<HubConnection> => {
-    if (connectionRef.current?.state === "Connected")
+    if (connectionRef.current?.state === "Connected") {
+      console.log("Reusing existing connection");
       return connectionRef.current;
+    }
+    console.log("Creating new connection");
 
     const hub = new HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL}/duelHub`, {
