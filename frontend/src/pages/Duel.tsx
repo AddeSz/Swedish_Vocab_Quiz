@@ -8,6 +8,7 @@ interface MatchData {
   duelId: string;
   opponentName: string;
   playerNumber: number;
+  startAtUtc: string;
 }
 
 export default function Duel() {
@@ -21,12 +22,14 @@ export default function Duel() {
   const { user, loading: authLoading, login } = useAuth();
   const hubRef = useRef<HubConnection | null>(null);
   const matchedRef = useRef(false);
+  const matchDataRef = useRef<MatchData | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     let matchFoundHandler: ((data: MatchData) => void) | undefined;
     let matchCancelledHandler: (() => void) | undefined;
+    let startGameHandler: (() => void) | undefined;
 
     const setupMatchmaking = async () => {
       try {
@@ -34,11 +37,21 @@ export default function Duel() {
         hubRef.current = hub;
 
         matchFoundHandler = (data) => {
+          matchDataRef.current = data;
           setMatchData(data);
-          setCountdown(3);
+        };
+
+        startGameHandler = () => {
+          if (!matchDataRef.current) return;
+          matchedRef.current = true;
+          const { duelId, opponentName, playerNumber } = matchDataRef.current;
+          navigate(
+            `/duel/game?id=${duelId}&opponent=${encodeURIComponent(opponentName)}&player=${playerNumber}`
+          );
         };
 
         matchCancelledHandler = () => {
+          matchDataRef.current = null;
           setMatchData(null);
           setCountdown(3);
           matchedRef.current = false;
@@ -47,6 +60,7 @@ export default function Duel() {
         };
 
         hub.on("MatchFound", matchFoundHandler);
+        hub.on("StartGame", startGameHandler);
         hub.on("MatchCancelled", matchCancelledHandler);
 
         hub.onclose(() => {
@@ -73,6 +87,7 @@ export default function Duel() {
         hubRef.current?.off("MatchFound", matchFoundHandler);
       if (matchCancelledHandler)
         hubRef.current?.off("MatchCancelled", matchCancelledHandler);
+      if (startGameHandler) hubRef.current?.off("StartGame", startGameHandler);
       const cleanup = async () => {
         await hubRef.current?.invoke("LeaveMatchmaking").catch(console.error);
         if (!matchedRef.current) await disconnect();
@@ -83,19 +98,18 @@ export default function Duel() {
 
   useEffect(() => {
     if (!matchData) return;
-    if (countdown <= 0) {
-      if (hubRef.current?.state !== "Connected") return;
-      matchedRef.current = true;
-      navigate(
-        `/duel/game?id=${matchData.duelId}&opponent=${encodeURIComponent(
-          matchData.opponentName
-        )}&player=${matchData.playerNumber}`
+
+    const tick = () => {
+      const secondsLeft = Math.ceil(
+        (new Date(matchData.startAtUtc).getTime() - Date.now()) / 1000
       );
-      return;
-    }
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [matchData, countdown]);
+      setCountdown(Math.max(0, secondsLeft));
+    };
+
+    tick();
+    const interval = setInterval(tick, 200);
+    return () => clearInterval(interval);
+  }, [matchData]);
 
   const handleCancel = async () => {
     navigate("/");

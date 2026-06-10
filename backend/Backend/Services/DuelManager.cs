@@ -92,8 +92,22 @@ public class DuelManager
     if (duel.Player2ConnectionId != null)
       await _hubContext.Groups.AddToGroupAsync(duel.Player2ConnectionId, $"duel-{duelId}");
 
-    await _hubContext.Clients.Group($"user-{player1Id}").SendAsync("MatchFound", new { DuelId = duelId, OpponentName = player2.DisplayName, PlayerNumber = 1 });
-    await _hubContext.Clients.Group($"user-{player2Id}").SendAsync("MatchFound", new { DuelId = duelId, OpponentName = player1.DisplayName, PlayerNumber = 2 });
+    var startAtUtc = DateTime.UtcNow.AddSeconds(3);
+
+    await _hubContext.Clients.Group($"user-{player1Id}").SendAsync("MatchFound", new { DuelId = duelId, OpponentName = player2.DisplayName, PlayerNumber = 1, StartAtUtc = startAtUtc });
+    await _hubContext.Clients.Group($"user-{player2Id}").SendAsync("MatchFound", new { DuelId = duelId, OpponentName = player1.DisplayName, PlayerNumber = 2, StartAtUtc = startAtUtc });
+
+    _ = Task.Run(async () => await RunMatchCountdown(duelId));
+  }
+
+  private async Task RunMatchCountdown(Guid duelId)
+  {
+    await Task.Delay(TimeSpan.FromSeconds(3));
+
+    var duel = GetDuel(duelId);
+    if (duel == null) return;
+
+    await _hubContext.Clients.Group($"duel-{duelId}").SendAsync("StartGame");
   }
 
   public DuelState? GetDuelByUserId(Guid userId)

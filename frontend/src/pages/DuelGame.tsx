@@ -90,7 +90,7 @@ export default function DuelGame() {
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [opponentDisconnectSecondsLeft, setOpponentDisconnectSecondsLeft] =
