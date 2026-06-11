@@ -459,7 +459,7 @@ public class DuelManager
   {
     var duel = GetDuel(duelId);
     if (duel == null) return null;
-    if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return null;
+    if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited || duel.Phase == DuelPhase.PreGame) return null;
 
     var isPlayer1 = duel.Player1UserId == userId;
     if (!isPlayer1 && duel.Player2UserId != userId) return null;
@@ -488,7 +488,8 @@ public class DuelManager
         question.QuestionText,
         question.Options,
         QuestionIndex = duel.CurrentQuestionIndex,
-        TimeLeftSeconds = Math.Max(0, 10 - (int)(DateTime.UtcNow - duel.QuestionStartedAtUtc!.Value).TotalSeconds)
+        TimeLeftSeconds = Math.Max(0, 10 - (int)(DateTime.UtcNow - duel.QuestionStartedAtUtc!.Value).TotalSeconds),
+        QuestionEndsAtUtc = duel.QuestionStartedAtUtc!.Value.AddSeconds(10)
       },
       DuelPhase.Review => new
       {
@@ -497,7 +498,8 @@ public class DuelManager
         duel.Player2Answer,
         duel.Player1Score,
         duel.Player2Score,
-        TimeLeftSeconds = Math.Max(0, 5 - (int)(DateTime.UtcNow - duel.ReviewStartedAtUtc!.Value).TotalSeconds)
+        TimeLeftSeconds = Math.Max(0, 5 - (int)(DateTime.UtcNow - duel.ReviewStartedAtUtc!.Value).TotalSeconds),
+        ReviewEndsAtUtc = duel.ReviewStartedAtUtc!.Value.AddSeconds(5)
       },
       _ => null
     };

@@ -65,6 +65,49 @@ function clearPersistedState(duelId: string) {
   sessionStorage.removeItem(`duel-result-${duelId}`);
 }
 
+function applyRejoinState(
+  state: RejoinState,
+  isPlayer1: boolean,
+  setMyScore: (v: number) => void,
+  setOpponentScore: (v: number) => void,
+  setQuestion: (v: DuelQuestion) => void,
+  setReview: (v: DuelReview) => void,
+  setTimeLeft: (v: number) => void,
+  setSelectedAnswer: (v: number | null) => void,
+  setPhase: (v: DuelPhase) => void
+) {
+  setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
+  setOpponentScore(isPlayer1 ? state.player2Score : state.player1Score);
+
+  if (state.phase === "Question") {
+    const secondsLeft = Math.ceil(
+      (new Date(state.phaseData.questionEndsAtUtc).getTime() - Date.now()) /
+        1000
+    );
+    setQuestion({
+      questionText: state.phaseData.questionText,
+      options: state.phaseData.options,
+      questionIndex: state.phaseData.questionIndex
+    });
+    setTimeLeft(Math.max(0, secondsLeft));
+    setSelectedAnswer(null);
+    setPhase("question");
+  } else if (state.phase === "Review") {
+    const secondsLeft = Math.ceil(
+      (new Date(state.phaseData.reviewEndsAtUtc).getTime() - Date.now()) / 1000
+    );
+    setReview({
+      correctAnswerIndex: state.phaseData.correctAnswerIndex,
+      player1Answer: state.phaseData.player1Answer,
+      player2Answer: state.phaseData.player2Answer,
+      player1Score: state.phaseData.player1Score,
+      player2Score: state.phaseData.player2Score
+    });
+    setTimeLeft(Math.max(0, secondsLeft));
+    setPhase("review");
+  }
+}
+
 export default function DuelGame() {
   const [searchParams] = useSearchParams();
   const duelId = searchParams.get("id");
@@ -78,7 +121,7 @@ export default function DuelGame() {
 
   const persisted = duelId ? getPersistedState(duelId) : null;
 
-  const [phase, setPhase] = useState<DuelPhase>(persisted?.phase ?? "question");
+  const [phase, setPhase] = useState<DuelPhase>(persisted?.phase ?? "pregame");
   const phaseRef = useRef<DuelPhase>(phase);
   const [question, setQuestion] = useState<DuelQuestion | null>(null);
   const [review, setReview] = useState<DuelReview | null>(null);
@@ -125,7 +168,7 @@ export default function DuelGame() {
 
   useEffect(() => {
     if (!duelId) {
-      navigate("/duel");
+      navigate("/");
       return;
     }
     if (persisted) return;
@@ -196,41 +239,28 @@ export default function DuelGame() {
           setReconnecting(false);
           try {
             await hub.invoke("JoinDuelGroup", duelId);
-            const state = await hub.invoke<RejoinState>("RejoinDuel", duelId);
-
+            const state = await hub.invoke<RejoinState | null>(
+              "RejoinDuel",
+              duelId
+            );
             if (!state) {
               navigate("/duel");
               return;
             }
-
-            setMyScore(isPlayer1 ? state.player1Score : state.player2Score);
-            setOpponentScore(
-              isPlayer1 ? state.player2Score : state.player1Score
+            applyRejoinState(
+              state,
+              isPlayer1,
+              setMyScore,
+              setOpponentScore,
+              setQuestion,
+              setReview,
+              setTimeLeft,
+              setSelectedAnswer,
+              setPhase
             );
-
-            if (state.phase === "Question") {
-              setQuestion({
-                questionText: state.phaseData.questionText,
-                options: state.phaseData.options,
-                questionIndex: state.phaseData.questionIndex
-              });
-              setTimeLeft(state.phaseData.timeLeftSeconds);
-              setSelectedAnswer(null);
-              setPhase("question");
-            } else if (state.phase === "Review") {
-              setReview({
-                correctAnswerIndex: state.phaseData.correctAnswerIndex,
-                player1Answer: state.phaseData.player1Answer,
-                player2Answer: state.phaseData.player2Answer,
-                player1Score: state.phaseData.player1Score,
-                player2Score: state.phaseData.player2Score
-              });
-              setTimeLeft(state.phaseData.timeLeftSeconds);
-              setPhase("review");
-            }
           } catch (err) {
             console.error("Failed to rejoin duel:", err);
-            navigate("/duel");
+            navigate("/");
           }
         });
 
@@ -244,7 +274,26 @@ export default function DuelGame() {
         });
 
         await hub.invoke("JoinDuelGroup", duelId);
-        await hub.invoke("ReadyToPlay", duelId);
+
+        const state = await hub.invoke<RejoinState | null>(
+          "RejoinDuel",
+          duelId
+        );
+        if (state) {
+          applyRejoinState(
+            state,
+            isPlayer1,
+            setMyScore,
+            setOpponentScore,
+            setQuestion,
+            setReview,
+            setTimeLeft,
+            setSelectedAnswer,
+            setPhase
+          );
+        } else {
+          await hub.invoke("ReadyToPlay", duelId);
+        }
       } catch (error) {
         console.error("Failed to setup duel:", error);
         navigate("/");
@@ -313,11 +362,6 @@ export default function DuelGame() {
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
-    if (duelId) {
-      try {
-        await hubRef.current?.invoke("LeaveDuel", duelId);
-      } catch {}
-    }
     if (duelId) clearPersistedState(duelId);
     blocker.proceed?.();
   };
