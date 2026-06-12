@@ -406,10 +406,22 @@ public class DuelManager
     if (isPlayer1) duel.Player1ReconnectCts = cts;
     else duel.Player2ReconnectCts = cts;
 
-    _ = Task.Delay(TimeSpan.FromSeconds(5), cts.Token).ContinueWith(async t =>
+    _ = MonitorDisconnect(duel.DuelId, userId, cts.Token);
+  }
+
+  private async Task MonitorDisconnect(
+    Guid duelId,
+    Guid userId,
+    CancellationToken token)
+  {
+    try
     {
-      if (!t.IsCanceled) await HandleDisconnectTimeout(duel.DuelId, userId);
-    });
+      await Task.Delay(TimeSpan.FromSeconds(5), token);
+      await HandleDisconnectTimeout(duelId, userId);
+    }
+    catch (OperationCanceledException)
+    {
+    }
   }
 
 
@@ -429,6 +441,18 @@ public class DuelManager
     var duel = GetDuel(duelId);
     if (duel == null) return;
     if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited) return;
+
+    bool stillDisconnected =
+        disconnectedUserId == duel.Player1UserId
+            ? duel.Player1Disconnected
+            : duel.Player2Disconnected;
+
+    if (!stillDisconnected)
+    {
+      Console.WriteLine(
+          $"Ignoring stale disconnect timeout for {disconnectedUserId}");
+      return;
+    }
 
     duel.Phase = DuelPhase.Forfeited;
 
@@ -458,6 +482,9 @@ public class DuelManager
   public async Task<object?> RejoinDuel(Guid duelId, Guid userId, string connectionId)
   {
     var duel = GetDuel(duelId);
+    Console.WriteLine(
+    $"Reconnect cancelled timeout for {userId}"
+  );
     if (duel == null) return null;
     if (duel.Phase == DuelPhase.Completed || duel.Phase == DuelPhase.Forfeited || duel.Phase == DuelPhase.PreGame) return null;
 

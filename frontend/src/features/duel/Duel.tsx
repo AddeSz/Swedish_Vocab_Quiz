@@ -1,8 +1,8 @@
 import type { HubConnection } from "@microsoft/signalr";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useDuel } from "../context/DuelContext";
+import { useAuth } from "../../context/AuthContext";
+import { useDuel } from "../../context/DuelContext";
 
 interface MatchData {
   duelId: string;

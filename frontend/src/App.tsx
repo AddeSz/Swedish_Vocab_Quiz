@@ -3,11 +3,11 @@ import { createBrowserRouter, Outlet } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import ThemeToggle from "./components/ThemeToggle";
 import { AuthProvider } from "./context/AuthContext";
-import { DuelProvider } from "./context/DuelContext";
 
+import { DuelProvider } from "./context/DuelContext";
+import Duel from "./features/duel/Duel";
+import DuelGame from "./features/duel/DuelGame";
 import AutoLogin from "./pages/AutoLogin";
-import Duel from "./pages/Duel";
-import DuelGame from "./pages/DuelGame";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Progress from "./pages/Progress";
